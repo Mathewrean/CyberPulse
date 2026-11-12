@@ -30,6 +30,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupManual();
   setupHealth();
   setupTimeline();
+  setupPalette();
   loadData();
   startLiveMonitor();
   setInterval(updateUptimeTimer, 1000);
@@ -1304,6 +1305,131 @@ function setupTimeline() {
     });
   }
   loadTimeline();
+}
+
+// 9d. Command Palette (Ctrl+K)
+function setupPalette() {
+  const overlay = document.getElementById("palette-overlay");
+  const input = document.getElementById("palette-input");
+  const results = document.getElementById("palette-results");
+  const closeBtn = document.getElementById("palette-close-btn");
+  let activeIndex = -1;
+
+  function openPalette() {
+    overlay.style.display = "flex";
+    input.focus();
+    input.value = "";
+    results.innerHTML = "";
+    activeIndex = -1;
+  }
+
+  function closePalette() {
+    overlay.style.display = "none";
+    input.blur();
+    activeIndex = -1;
+  }
+
+  function renderResults(items) {
+    if (!items || items.length === 0) {
+      results.innerHTML = "<div style='padding:12px 14px;color:var(--text-muted);'>No results.</div>";
+      return;
+    }
+    results.innerHTML = items.map((r, i) => {
+      const typeLabel = r.type === "tool" ? "Tool" : r.type === "manual" ? "Manual" : "Scenario";
+      const highlighted = r.title.replace(
+        new RegExp(`(${escapeHtmlRegExp(r.query || "")})`, "gi"),
+        "<mark>$1</mark>"
+      );
+      return `
+        <div class="palette-item" data-index="${i}" style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border-subtle);">
+          <div style="display:flex;flex:1;gap:10px;">
+            <div style="font-size:11px;color:var(--spotify-green-dim);font-weight:700;text-transform:uppercase;width:44px;">${escapeHtml(typeLabel)}</div>
+            <div><div style="font-weight:700;color:var(--text-primary);">${highlighted}</div><div style="font-size:12px;color:var(--text-muted);">${escapeHtml(r.subtitle || "")}</div></div>
+          </div>
+          <div style="color:var(--spotify-green);">&#9656;</div>
+        </div>
+      `;
+    }).join("");
+    results.querySelectorAll(".palette-item").forEach(el => {
+      el.addEventListener("click", () => {
+        const idx = Number(el.getAttribute("data-index"));
+        navigateTo(items[idx]);
+        closePalette();
+      });
+    });
+  }
+
+  function escapeHtmlRegExp(s) {
+    return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  async function search(query) {
+    try {
+      const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&limit=8`);
+      if (!res.ok) throw new Error("search failed");
+      const data = await res.json();
+      renderResults(data.results || []);
+    } catch (e) {
+      results.innerHTML = "<div style='padding:12px 14px;color:var(--text-muted);'>Search unavailable.</div>";
+    }
+  }
+
+  function navigateTo(r) {
+    if (r.type === "tool") {
+      const searchInput = document.getElementById("global-search");
+      if (searchInput) searchInput.value = r.title;
+      switchTab("checklist");
+      renderTools();
+    } else if (r.type === "manual") {
+      const mInput = document.getElementById("manual-search");
+      if (mInput) mInput.value = r.title;
+      switchTab("manual");
+      const btn = document.getElementById("btn-load-manual");
+      if (btn) btn.click();
+    } else if (r.type === "scenario") {
+      const sInput = document.getElementById("scenario-input");
+      if (sInput) sInput.value = r.title;
+      switchTab("advisor");
+    }
+  }
+
+  if (closeBtn) closeBtn.addEventListener("click", closePalette);
+  if (overlay) {
+    overlay.addEventListener("click", e => { if (e.target === overlay) closePalette(); });
+  }
+  if (input) {
+    input.addEventListener("keydown", e => {
+      if (e.key === "Escape") closePalette();
+      else if (e.key === "ArrowDown") { e.preventDefault(); activeIndex = Math.min(activeIndex + 1, (results.querySelectorAll(".palette-item").length || 1) - 1); highlightItem(); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); activeIndex = Math.max(activeIndex - 1, -1); highlightItem(); }
+      else if (e.key === "Enter") {
+        e.preventDefault();
+        const items = results.querySelectorAll(".palette-item");
+        if (activeIndex >= 0 && items[activeIndex]) items[activeIndex].click();
+        else if (items[0]) items[0].click();
+      }
+    });
+    input.addEventListener("input", () => {
+      activeIndex = -1;
+      const q = input.value.trim();
+      if (q.length >= 1) search(q);
+      else results.innerHTML = "";
+    });
+  }
+
+  document.addEventListener("keydown", e => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+      e.preventDefault();
+      openPalette();
+    }
+  });
+
+  function highlightItem() {
+    const items = results.querySelectorAll(".palette-item");
+    items.forEach((el, i) => {
+      el.style.background = i === activeIndex ? "var(--bg-card-hover)" : "";
+    });
+  }
 }
 
 // 10. Uptime counter

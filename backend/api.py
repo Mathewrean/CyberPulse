@@ -172,6 +172,58 @@ def dashboard_summary():
         "next_tool": get_next_recommended_tool(),
     }
 
+
+@app.get("/api/search")
+def search(q: str | None = None, limit: int = 10):
+    """Fuzzy (substring) search across tools, scenarios, and manuals for the command palette."""
+    query = (q or "").strip()
+    results = []
+    if query:
+        ql = query.lower()
+        seen = set()
+
+        def add(rtype, title, subtitle, url, score):
+            key = (rtype, title)
+            if key in seen:
+                return
+            seen.add(key)
+            results.append({"type": rtype, "title": title, "subtitle": subtitle, "url": url, "score": score})
+
+        # Tools
+        try:
+            for t in get_all_tools():
+                name = t.get("name", "")
+                disp = t.get("display_name", "") or ""
+                desc = t.get("description", "") or ""
+                cat = t.get("category", "") or ""
+                hay = f"{name} {disp} {desc} {cat}".lower()
+                if ql in hay:
+                    score = 3 if name.lower().startswith(ql) or disp.lower().startswith(ql) else 1
+                    add("tool", disp or name, f"{cat} • {t.get('binary_path', '')}", f"/tool/{name}", score)
+        except Exception:
+            pass
+
+        # Scenarios (history)
+        try:
+            for s in get_scenario_history(limit=50):
+                qt = s.get("query_text", "") or ""
+                if ql in qt.lower():
+                    add("scenario", qt[:80], s.get("detected_category", ""), f"/advisor?q={qt}", 2)
+        except Exception:
+            pass
+
+        # Manuals (cached)
+        try:
+            for mname in list_cached_manuals():
+                if ql in mname.lower():
+                    add("manual", mname, "Local manual", f"/manual/{mname}", 2)
+        except Exception:
+            pass
+
+    results.sort(key=lambda r: (-r["score"], r["title"].lower()))
+    return {"query": query, "results": results[:limit]}
+
+
 @app.get("/api/monitor/live")
 def monitor_live():
     live = get_collector_manager().get_live_status()

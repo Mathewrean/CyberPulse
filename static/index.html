@@ -505,6 +505,22 @@
     </div>
   </div>
 
+  <!-- Command Palette (Ctrl+K) -->
+  <div class="modal-overlay" id="palette-overlay" style="display:none;">
+    <div class="modal-box" style="max-width:620px;width:90vw;max-height:80vh;display:flex;flex-direction:column;">
+      <div class="modal-header" style="padding-bottom:10px;border-bottom:1px solid var(--border-subtle);">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:var(--spotify-green);"><circle cx="11" cy="8" r="2"/><path d="M19.4 15.3c-1.1-1.1-2.9-1.1-4 0L14 15.3l-1.4-1.4c-1.1-1.1-2.9-1.1-4 0s-1.1 2.9 0 4l4.4 4.4c.5.5 1.1.8 1.8.8s1.3-.3 1.8-.8l4.4-4.4c1.1-1.1 1.1-2.9 0-4z"/></svg>
+          <div class="modal-title" id="palette-title">Command Palette</div>
+        </div>
+        <button class="btn-icon" id="palette-close-btn">&times;</button>
+      </div>
+      <input type="text" id="palette-input" class="search-input" placeholder="Search tools, commands, scenarios, notes (Ctrl+K)..." style="margin-bottom:10px;padding:10px 14px;font-size:14px;">
+      <div id="palette-results" style="overflow:auto;max-height:440px;font-size:13px;"></div>
+      <div style="padding:8px 14px;font-size:12px;color:var(--text-muted);border-top:1px solid var(--border-subtle);">Press <kbd>Ctrl</kbd>+<kbd>K</kbd> to open &bull; <kbd>Esc</kbd> to close</div>
+    </div>
+  </div>
+
   <!-- Scripts -->
   <script src="/static/js/app.js"></script>
 </body>
