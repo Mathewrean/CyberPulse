@@ -98,7 +98,6 @@ class ToolUsageMonitor:
                 pname = (proc.info['name'] or "").lower()
                 cmdline_list = proc.info['cmdline'] or []
                 cmdline_str = " ".join(cmdline_list)
-                cmdline_lower = cmdline_str.lower()
                 
                 matched_tool = None
                 

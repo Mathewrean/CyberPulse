@@ -13,15 +13,15 @@ import uvicorn
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-# Ensure package directory is on python path
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-if BASE_DIR not in sys.path:
-    sys.path.insert(0, BASE_DIR)
-
 from backend.api import app
 from backend.collectors import get_collector_manager
 from backend.database import get_all_tools, init_db
 from backend.scanner import scan_all_tools
+
+# Ensure package directory is on python path
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
 
 # Mount static files directory
 STATIC_DIR = os.path.join(BASE_DIR, "static")

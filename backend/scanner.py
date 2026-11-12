@@ -431,9 +431,9 @@ def scan_all_tools() -> dict[str, Any]:
                     origin_url = ""
                     if os.path.exists(cfg_file):
                         with open(cfg_file, errors="ignore") as fp:
-                            for l in fp:
-                                if "url =" in l:
-                                    origin_url = l.split("=", 1)[1].strip()
+                            for line in fp:
+                                if "url =" in line:
+                                    origin_url = line.split("=", 1)[1].strip()
                                     break
 
                     readme_desc = ""
@@ -625,7 +625,7 @@ def scan_all_tools() -> dict[str, Any]:
     # ---------------------------------------------------------
     installed_count = 0
     sources_summary = {}
-    for name, tool_data in discovered_tools.items():
+    for _, tool_data in discovered_tools.items():
         if tool_data.get("installed"):
             installed_count += 1
             src = tool_data.get("install_source", "APT (System)")
