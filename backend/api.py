@@ -324,7 +324,7 @@ def wipe_data():
     return {"status": "success", "wiped": counts}
 
 
-# --- Manual lab session endpoints ---
+# Lab session endpoints
 class LabSessionRequest(BaseModel):
     session_id: str
     name: str | None = ""
@@ -386,7 +386,7 @@ def export_data():
     )
 
 
-# --- Health page ---
+# Health page
 class DependencyCheck(BaseModel):
     name: str
     available: bool

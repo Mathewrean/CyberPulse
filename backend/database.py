@@ -552,7 +552,7 @@ def get_scenario_history(limit: int = 10) -> list[dict[str, Any]]:
     return res
 
 
-# --- Manual lab session helpers ---
+# Lab session helpers
 def start_lab_session(session_id: str, name: str = "", target: str = "", notes: str = "", tools: list[str] = None) -> None:
     conn = get_connection()
     cursor = conn.cursor()
@@ -609,7 +609,7 @@ def get_usage_timeline(limit: int = 100) -> list[dict[str, Any]]:
     return res
 
 
-# --- Dashboard enhancements ---
+# Dashboard enhancements
 
 STATUS_WEIGHT = {"not_started": 0.0, "learning": 0.25, "practicing": 0.5, "mastered": 1.0}
 STATUS_ORDER = {"not_started": 0, "learning": 1, "practicing": 2, "mastered": 3}

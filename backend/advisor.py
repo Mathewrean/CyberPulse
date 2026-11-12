@@ -15,7 +15,7 @@ from typing import Any
 
 from .database import get_connection, get_setting, save_scenario_query
 
-# --- Redaction patterns (data that must not leave the machine) ---
+# Redaction patterns
 
 IP_RE = re.compile(r"\b(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\b")
 CIDR_RE = re.compile(r"\b(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])/\d{1,2}\b")

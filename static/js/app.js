@@ -556,7 +556,7 @@ function renderTools() {
   if (filtered.length === 0) {
     container.innerHTML = `
       <div style="grid-column: 1 / -1; padding: 50px 20px; text-align: center; background-color: var(--bg-card); border-radius: var(--radius-md); border: 1px dashed var(--border-subtle); margin-top: 10px;">
-        <div style="font-size: 42px; margin-bottom: 12px;">🔍</div>
+        <div style="font-size: 42px; margin-bottom: 12px;">Search</div>
         <div style="font-size: 18px; font-weight: 700; margin-bottom: 8px; color: var(--text-primary);">No cybersecurity tools match your filters</div>
         <div style="color: var(--text-secondary); font-size: 14px; max-width: 520px; margin: 0 auto 20px auto; line-height: 1.5;">
           ${getFilterMismatchDescription(query, currentCategory, sourceFilter, installFilter, statusFilter, filterFavoritesOnly)}
@@ -662,12 +662,12 @@ function openModal(tool) {
         <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 3px;">${escapeHtml(ex.desc || '')}</div>
         <div class="code-snippet">
           <span>${escapeHtml(ex.cmd || '')}</span>
-          <button class="copy-btn" onclick="copySnippet('${escapeAttr(ex.cmd || '')}')">📋 Copy</button>
+          <button class="copy-btn" onclick="copySnippet('${escapeAttr(ex.cmd || '')}')">Copy</button>
         </div>
       </div>
     `).join("");
   } else {
-    syntaxHtml = `<div class="code-snippet"><span>${tool.name} --help</span><button class="copy-btn" onclick="copySnippet('${tool.name} --help')">📋</button></div>`;
+    syntaxHtml = `<div class="code-snippet"><span>${tool.name} --help</span><button class="copy-btn" onclick="copySnippet('${tool.name} --help')">Copy</button></div>`;
   }
 
   // Real-world Incident Scenarios HTML
@@ -689,7 +689,7 @@ function openModal(tool) {
   if (tool.learning_refs && tool.learning_refs.length > 0) {
     refsHtml = tool.learning_refs.map(r => `
       <a href="${escapeAttr(r.url)}" target="_blank" class="btn btn-secondary" style="font-size: 12px; padding: 6px 14px; text-decoration: none;">
-        🌐 ${escapeHtml(r.title)}
+        ${escapeHtml(r.title)}
       </a>
     `).join(" ");
   }
@@ -702,7 +702,7 @@ function openModal(tool) {
         <div class="modal-section-title">Install Command</div>
         <div class="code-snippet">
           <span>${escapeHtml(tool.install_command)}</span>
-          <button class="copy-btn" onclick="copySnippet('${escapeAttr(tool.install_command)}')">📋 Copy</button>
+          <button class="copy-btn" onclick="copySnippet('${escapeAttr(tool.install_command)}')">Copy</button>
         </div>
       </div>
     `;
@@ -957,7 +957,7 @@ function renderAdvisorOutput(data) {
       ${(t.syntax_examples || []).map(ex => `
         <div class="code-snippet" style="margin-bottom: 6px; font-size: 12px;">
           <span>${escapeHtml(ex.cmd || '')}</span>
-          <button class="copy-btn" onclick="copySnippet('${escapeAttr(ex.cmd || '')}')">📋</button>
+          <button class="copy-btn" onclick="copySnippet('${escapeAttr(ex.cmd || '')}')">Copy</button>
         </div>
       `).join("")}
     </div>
@@ -974,7 +974,7 @@ function renderAdvisorOutput(data) {
       </div>
       <div class="code-snippet" style="margin-bottom: 6px; font-size: 12px;">
         <span>${escapeHtml(t.install_command || '')}</span>
-        <button class="copy-btn" onclick="copySnippet('${escapeAttr(t.install_command || '')}')">📋 Copy</button>
+        <button class="copy-btn" onclick="copySnippet('${escapeAttr(t.install_command || '')}')">Copy</button>
       </div>
     </div>
   `).join("");
@@ -1123,7 +1123,7 @@ function renderManual(m) {
         <div class="step-label" style="font-size:12px;color:var(--spotify-green);">${e.level} — ${escapeHtml(e.desc || '')}</div>
         <div class="code-snippet" style="margin-top:4px;">
           <span>${escapeHtml(e.cmd || '')}</span>
-          <button class="copy-btn" onclick="copySnippet('${escapeAttr(e.cmd || '')}')">📋 Copy</button>
+          <button class="copy-btn" onclick="copySnippet('${escapeAttr(e.cmd || '')}')">Copy</button>
         </div>
         <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${m.banner || 'Authorised targets and your own lab only.'}</div>
       </div>
@@ -1141,7 +1141,7 @@ function renderManual(m) {
     <div style="font-weight:700;font-size:13px;margin-bottom:4px;color:var(--text-secondary);">Install Check</div>
     <div class="code-snippet" style="margin-bottom:10px;">
       <span>${escapeHtml(m.install_check || `which ${m.name}`)}</span>
-      <button class="copy-btn" onclick="copySnippet('${escapeAttr(m.install_check || `which ${m.name}`)}')">📋 Copy</button>
+      <button class="copy-btn" onclick="copySnippet('${escapeAttr(m.install_check || `which ${m.name}`)}')">Copy</button>
     </div>
 
     <div style="font-weight:700;font-size:13px;margin-bottom:4px;color:var(--text-secondary);">Most-used Options</div>

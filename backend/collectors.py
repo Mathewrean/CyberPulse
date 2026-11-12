@@ -478,7 +478,7 @@ class CollectorManager:
                 pass
 
 
-# --- Lab session API (manual session log / phase f) ---
+# Lab session API
 
 _lab_lock = threading.Lock()
 
