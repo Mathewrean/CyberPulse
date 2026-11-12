@@ -43,6 +43,10 @@
           <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
           <span class="nav-text">Incident Advisor</span>
         </a>
+        <a class="nav-item" data-tab="manual">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2l8-5v-3l-8 5v-2l8-5V5l-8 3v2z"/></svg>
+          <span class="nav-text">Tool Manuals</span>
+        </a>
         <a class="nav-item" data-tab="share">
           <svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>
           <span class="nav-text">Share & Export</span>
@@ -307,7 +311,40 @@
           </div>
         </section>
 
-        <!-- VIEW 5: SHARE & EXPORT -->
+        <!-- VIEW 5: TOOL MANUALS (offline, locally generated) -->
+        <section id="view-manual" class="tab-view" style="display: none;">
+          <div class="view-hero">
+            <div class="hero-title">Tool Manuals</div>
+            <div class="hero-subtitle">Locally generated manuals from tldr, man pages, --help output, /usr/share/doc, and curated knowledge. Works 100% offline.</div>
+          </div>
+
+          <div class="advisor-card" style="margin-bottom: 20px;">
+            <div style="display: flex; gap: 10px; align-items: flex-end; margin-bottom: 12px;">
+              <input type="text" id="manual-search" class="search-input" placeholder="Search tool manual (e.g. nmap, ffuf, hydra)..." style="flex: 1;">
+              <button class="btn btn-primary" id="btn-load-manual">Load Manual</button>
+            </div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">
+              <span id="manual-source-badge"></span>
+            </div>
+            <div id="manual-content">
+              <p style="color: var(--text-muted);">Select a tool to view its local manual.</p>
+            </div>
+          </div>
+
+          <div class="advisor-card">
+            <div style="font-size: 14px; font-weight: 700; color: var(--spotify-green); margin-bottom: 8px;">EXPLAIN THIS COMMAND</div>
+            <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+              <input type="text" id="explain-input" class="search-input" placeholder="Paste a command, e.g. nmap -sC -sV -p- -oA full_scan 192.168.1.100" style="flex: 1;">
+              <button class="btn btn-secondary" id="btn-explain">Explain</button>
+            </div>
+            <div id="explain-output" style="font-size: 13px; line-height: 1.5; color: var(--text-primary);">
+              <p style="color: var(--text-muted);">Paste any command for a flag-by-flag breakdown (offline parser).</p>
+            </div>
+            <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;"><strong>Authorised targets and your own lab only.</strong></div>
+          </div>
+        </section>
+
+        <!-- VIEW 6: SHARE & EXPORT -->
         <section id="view-share" class="tab-view" style="display: none;">
           <div class="view-hero">
             <div class="hero-title">Share CyberPulse & Export Data</div>

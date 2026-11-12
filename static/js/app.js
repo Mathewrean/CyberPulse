@@ -27,6 +27,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupNavigation();
   setupSearchAndFilters();
   setupAdvisor();
+  setupManual();
   loadData();
   startLiveMonitor();
   setInterval(updateUptimeTimer, 1000);
@@ -996,6 +997,143 @@ function renderAdvisorOutput(data) {
   `;
 
   container.scrollIntoView({ behavior: "smooth" });
+}
+
+// 9. Tool Manuals tab
+function setupManual() {
+  const btn = document.getElementById("btn-load-manual");
+  const search = document.getElementById("manual-search");
+  const content = document.getElementById("manual-content");
+  const sourceBadge = document.getElementById("manual-source-badge");
+
+  if (btn) {
+    btn.addEventListener("click", async () => {
+      const tool = (search && search.value) ? search.value.trim() : "";
+      if (!tool) {
+        content.innerHTML = '<p style="color: var(--text-muted);">Type a tool name (e.g. nmap, ffuf, hydra).</p>';
+        return;
+      }
+      btn.textContent = "Loading...";
+      btn.disabled = true;
+      try {
+        const res = await fetch(`/api/manual/${encodeURIComponent(tool)}`);
+        if (!res.ok) {
+          content.innerHTML = `<p style="color: var(--text-muted);">No local manual found for "${escapeHtml(tool)}".</p>`;
+          sourceBadge.textContent = "";
+          return;
+        }
+        const m = await res.json();
+        renderManual(m);
+      } catch (e) {
+        content.innerHTML = '<p style="color: var(--text-muted);">Failed to load manual.</p>';
+      } finally {
+        btn.textContent = "Load Manual";
+        btn.disabled = false;
+      }
+    });
+  }
+
+  const explainBtn = document.getElementById("btn-explain");
+  const explainInput = document.getElementById("explain-input");
+  const explainOutput = document.getElementById("explain-output");
+  if (explainBtn && explainInput && explainOutput) {
+    explainBtn.addEventListener("click", async () => {
+      const command = explainInput.value.trim();
+      if (!command) {
+        explainOutput.innerHTML = '<p style="color: var(--text-muted);">Paste a command to explain.</p>';
+        return;
+      }
+      explainBtn.textContent = "Explaining...";
+      explainBtn.disabled = true;
+      try {
+        const res = await fetch("/api/manual/explain", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({command}),
+        });
+        if (!res.ok) throw new Error("explain failed");
+        const data = await res.json();
+        renderExplain(data);
+      } catch (e) {
+        explainOutput.innerHTML = '<p style="color: var(--text-muted);">Could not explain command.</p>';
+      } finally {
+        explainBtn.textContent = "Explain";
+        explainBtn.disabled = false;
+      }
+    });
+  }
+}
+
+function renderManual(m) {
+  const content = document.getElementById("manual-content");
+  const sourceBadge = document.getElementById("manual-source-badge");
+  if (sourceBadge) {
+    sourceBadge.textContent = `Source: ${(m.source || "curated").toUpperCase()}  |  ${m.banner || ""}`;
+  }
+
+  const optionsHtml = (m.options || []).map(o =>
+    `<div style="display:flex;gap:10px;margin-bottom:4px;"><div style="font-family:monospace;font-size:12px;color:var(--spotify-green);min-width:110px;">${escapeHtml(o.flag || '')}</div><div style="font-size:13px;color:var(--text-primary);">${escapeHtml(o.description || '')}</div></div>`
+  ).join("") || '<p style="font-size:13px;color:var(--text-muted);">No options parsed.</p>';
+
+  const levels = ["Beginner", "Intermediate", "Advanced"];
+  const examplesHtml = levels.map(lvl => {
+    const exs = (m.examples || []).filter(e => e.level === lvl);
+    if (exs.length === 0) return "";
+    const items = exs.map(e => `
+      <div class="playbook-step" style="margin-bottom:8px;">
+        <div class="step-label" style="font-size:12px;color:var(--spotify-green);">${e.level} — ${escapeHtml(e.desc || '')}</div>
+        <div class="code-snippet" style="margin-top:4px;">
+          <span>${escapeHtml(e.cmd || '')}</span>
+          <button class="copy-btn" onclick="copySnippet('${escapeAttr(e.cmd || '')}')">📋 Copy</button>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${m.banner || 'Authorised targets and your own lab only.'}</div>
+      </div>
+    `).join("");
+    return `<div style="margin-bottom:14px;"><div style="font-weight:700;font-size:13px;margin-bottom:6px;color:var(--text-secondary);">${lvl}</div>${items}</div>`;
+  }).join("") || '<p style="font-size:13px;color:var(--text-muted);">No worked examples.</p>';
+
+  content.innerHTML = `
+    <div style="font-size:15px;font-weight:700;margin-bottom:6px;color:var(--text-primary);">${escapeHtml(m.display_name || m.name)}</div>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Category: ${escapeHtml(m.category || '')}</div>
+
+    <div style="font-weight:700;font-size:13px;margin-bottom:4px;color:var(--text-secondary);">Purpose</div>
+    <p style="font-size:13px;line-height:1.5;color:var(--text-primary);margin-bottom:10px;">${escapeHtml(m.purpose || 'No description available.')}</p>
+
+    <div style="font-weight:700;font-size:13px;margin-bottom:4px;color:var(--text-secondary);">Install Check</div>
+    <div class="code-snippet" style="margin-bottom:10px;">
+      <span>${escapeHtml(m.install_check || `which ${m.name}`)}</span>
+      <button class="copy-btn" onclick="copySnippet('${escapeAttr(m.install_check || `which ${m.name}`)}')">📋 Copy</button>
+    </div>
+
+    <div style="font-weight:700;font-size:13px;margin-bottom:4px;color:var(--text-secondary);">Most-used Options</div>
+    <div style="margin-bottom:10px;">${optionsHtml}</div>
+
+    <div style="font-weight:700;font-size:13px;margin-bottom:4px;color:var(--text-secondary);">Worked Examples</div>
+    <div style="margin-bottom:10px;">${examplesHtml}</div>
+
+    <div style="font-weight:700;font-size:13px;margin-bottom:4px;color:var(--text-secondary);">MITRE ATT&amp;CK</div>
+    <p style="font-size:13px;color:var(--text-primary);margin-bottom:10px;">${escapeHtml((m.mitre || []).join(", ") || "—")}</p>
+
+    <div style="font-weight:700;font-size:13px;margin-bottom:4px;color:var(--text-secondary);">Defensive View</div>
+    <p style="font-size:13px;line-height:1.5;color:var(--text-primary);margin-bottom:10px;">${escapeHtml(m.defensive || `Defenders can detect ${m.name} via process-execution monitoring, network-flow logs, and endpoint EDR rules.`)}</p>
+
+    <div style="font-size:11px;color:var(--text-muted);margin-top:10px;">${m.banner || 'Authorised targets and your own lab only.'}</p>
+  `;
+}
+
+function renderExplain(data) {
+  const output = document.getElementById("explain-output");
+  const flagsHtml = (data.flags || []).map(f =>
+    `<div style="display:flex;gap:10px;margin-bottom:3px;"><div style="font-family:monospace;font-size:12px;color:var(--spotify-green);min-width:130px;">${escapeHtml(f.flag || '')}</div><div style="font-size:13px;color:var(--text-primary);">${escapeHtml(f.description || '')}</div></div>`
+  ).join("") || '<p style="font-size:13px;color:var(--text-muted);">No flags detected.</p>';
+  output.innerHTML = `
+    <div style="font-weight:700;font-size:13px;margin-bottom:6px;color:var(--text-secondary);">${escapeHtml(data.binary || 'command')}</div>
+    <p style="font-size:13px;color:var(--text-primary);margin-bottom:8px;">${escapeHtml(data.summary || '')}</p>
+    <div style="font-weight:700;font-size:12px;margin-bottom:4px;color:var(--text-secondary);">Flags / Arguments</div>
+    <div>${flagsHtml}</div>
+    ${data.placeholders && data.placeholders.length ? `<div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Placeholders: ${data.placeholders.join(", ")}</div>` : ""}
+    <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">${data.banner || 'Authorised targets and your own lab only.'}</div>
+  `;
 }
 
 // 10. Uptime counter
