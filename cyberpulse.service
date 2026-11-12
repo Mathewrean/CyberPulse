@@ -1,0 +1,16 @@
+[Unit]
+Description=CyberPulse Cybersecurity Checklist & Background Usage Monitor
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/mathewrean/Desktop/CyberPulse
+ExecStart=/usr/bin/python3 /home/mathewrean/Desktop/CyberPulse/app.py --host 127.0.0.1 --port 8844
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target

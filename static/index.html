@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CyberPulse | Cybersecurity Tool Checklist & Monitor (Spotify Edition)</title>
+  <link rel="stylesheet" href="/static/css/spotify-theme.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%231DB954'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.59 14.42c-.18.3-.57.39-.87.21-2.38-1.46-5.38-1.79-8.91-.98-.34.08-.68-.14-.76-.48-.08-.34.14-.68.48-.76 3.87-.88 7.18-.51 9.85 1.13.3.18.39.57.21.88zm1.22-2.73c-.23.37-.71.49-1.08.26-2.73-1.68-6.89-2.16-10.12-1.18-.42.13-.86-.11-.99-.53-.13-.42.11-.86.53-.99 3.69-1.12 8.28-.59 11.4 1.34.37.23.49.71.26 1.08zm.13-2.85C14.67 9.07 9.29 8.89 6.18 9.83c-.5.15-1.03-.14-1.18-.64-.15-.5.14-1.03.64-1.18 3.59-1.09 9.54-.88 13.41 1.41.45.27.6.86.33 1.31-.27.46-.86.6-1.31.33z'/></svg>">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Left Spotify Sidebar -->
+    <aside class="sidebar">
+      <div class="brand-header">
+        <div class="brand-logo">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.59 14.42c-.18.3-.57.39-.87.21-2.38-1.46-5.38-1.79-8.91-.98-.34.08-.68-.14-.76-.48-.08-.34.14-.68.48-.76 3.87-.88 7.18-.51 9.85 1.13.3.18.39.57.21.88zm1.22-2.73c-.23.37-.71.49-1.08.26-2.73-1.68-6.89-2.16-10.12-1.18-.42.13-.86-.11-.99-.53-.13-.42.11-.86.53-.99 3.69-1.12 8.28-.59 11.4 1.34.37.23.49.71.26 1.08zm.13-2.85C14.67 9.07 9.29 8.89 6.18 9.83c-.5.15-1.03-.14-1.18-.64-.15-.5.14-1.03.64-1.18 3.59-1.09 9.54-.88 13.41 1.41.45.27.6.86.33 1.31-.27.46-.86.6-1.31.33z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="brand-title">CyberPulse</div>
+          <div class="brand-tag">Security Suite</div>
+        </div>
+      </div>
+
+      <!-- Navigation Menu -->
+      <nav class="nav-menu">
+        <a class="nav-item active" data-tab="dashboard">
+          <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+          <span class="nav-text">Dashboard</span>
+        </a>
+        <a class="nav-item" data-tab="checklist">
+          <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+          <span class="nav-text">Tool Checklist</span>
+          <span class="nav-badge" id="nav-tool-count">...</span>
+        </a>
+        <a class="nav-item" data-tab="monitor">
+          <svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+          <span class="nav-text">Live Monitor</span>
+          <span class="nav-badge" id="nav-active-count" style="background-color: var(--spotify-green-dim); color: var(--spotify-green);">0</span>
+        </a>
+        <a class="nav-item" data-tab="advisor">
+          <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+          <span class="nav-text">Incident Advisor</span>
+        </a>
+        <a class="nav-item" data-tab="share">
+          <svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>
+          <span class="nav-text">Share & Export</span>
+        </a>
+      </nav>
+
+      <!-- Sidebar Footer -->
+      <div class="sidebar-footer">
+        <div class="system-status">
+          <div class="pulse-dot" id="net-pulse-dot"></div>
+          <span id="net-status-text">Checking network...</span>
+        </div>
+        <div style="font-size: 11px; color: var(--text-muted);">
+          Desktop: <code style="color: var(--spotify-green);">~/Desktop/CyberPulse</code>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-wrapper">
+      <!-- Top Spotify Header -->
+      <header class="top-header">
+        <div class="header-search">
+          <svg class="search-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+          <input type="text" id="global-search" class="search-input" placeholder="Search 260+ cybersecurity tools...">
+        </div>
+
+        <div class="header-actions">
+          <button class="btn btn-secondary" id="btn-rescan" title="Deep scan machine for new tools">
+            <svg style="width: 15px; height: 15px; fill: currentColor;" viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+            Rescan Tools
+          </button>
+          
+          <button class="btn btn-icon" id="theme-toggle" title="Toggle Spotify Dark / Light mode">
+            <svg id="theme-icon" viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- Scrollable Views Container -->
+      <div class="content-area">
+        
+        <!-- VIEW 1: DASHBOARD -->
+        <section id="view-dashboard" class="tab-view active">
+          <div class="view-hero">
+            <div class="hero-title">Cybersecurity Arsenal & Activity Hub</div>
+            <div class="hero-subtitle">Comprehensive system tool checklist, background usage monitoring, and MITRE ATT&CK incident resolution engine.</div>
+          </div>
+
+          <!-- Top Metrics Grid -->
+          <div class="metrics-grid">
+            <div class="metric-card" id="card-metric-installed" style="cursor: pointer;" title="Click to view all installed tools">
+              <div class="metric-header">
+                <span class="metric-title">Tools Installed</span>
+                <div class="metric-icon"><svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></div>
+              </div>
+              <div class="metric-value" id="stat-installed">...</div>
+              <div class="metric-footer" id="stat-installed-sub" style="color: var(--spotify-green);">Ready to execute • View installed tools &rarr;</div>
+            </div>
+
+            <div class="metric-card" id="card-metric-total" style="cursor: pointer;" title="Click to view full checklist">
+              <div class="metric-header">
+                <span class="metric-title">Available in Suite</span>
+                <div class="metric-icon"><svg viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z"/></svg></div>
+              </div>
+              <div class="metric-value" id="stat-total">...</div>
+              <div class="metric-footer" id="stat-missing-sub" style="color: var(--spotify-green);">View complete tool directory &rarr;</div>
+            </div>
+
+            <div class="metric-card" id="card-metric-runtime" style="cursor: pointer;" title="Click to view runtime monitor">
+              <div class="metric-header">
+                <span class="metric-title">Cumulative App Usage</span>
+                <div class="metric-icon"><svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg></div>
+              </div>
+              <div class="metric-value" id="stat-runtime">0.0h</div>
+              <div class="metric-footer" id="stat-runs" style="color: var(--spotify-green);">View live monitoring telemetry &rarr;</div>
+            </div>
+
+            <div class="metric-card" id="card-metric-mastery" style="cursor: pointer;" title="Click to view checklist progress">
+              <div class="metric-header">
+                <span class="metric-title">Mastery Progress</span>
+                <div class="metric-icon"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
+              </div>
+              <div class="metric-value" id="stat-mastery">0%</div>
+              <div class="metric-footer" id="stat-mastery-sub" style="color: var(--spotify-green);">Track study &amp; practice goals &rarr;</div>
+            </div>
+          </div>
+
+          <!-- Active Tools Live Banner -->
+          <div class="advisor-card" style="margin-bottom: 24px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+              <div style="font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 10px;">
+                <div class="pulse-dot"></div>
+                Currently Active Processes
+              </div>
+              <span class="badge badge-inst" id="active-processes-count">0 Running</span>
+            </div>
+            <div id="active-processes-table-wrap">
+              <p style="color: var(--text-muted); font-size: 13px;">No security tools currently running. Background monitor is watching for executions.</p>
+            </div>
+          </div>
+
+          <!-- Categories Breakdown Grid -->
+          <h3 style="font-size: 18px; font-weight: 800; margin-bottom: 14px;">Tool Distribution by Domain</h3>
+          <div class="metrics-grid" id="category-cards-grid">
+            <!-- Dynamically populated -->
+          </div>
+
+          <!-- Installation Methods Breakdown Grid -->
+          <h3 style="font-size: 18px; font-weight: 800; margin: 28px 0 14px 0;">Tools by Installation Method</h3>
+          <div class="metrics-grid" id="sources-cards-grid">
+            <!-- Dynamically populated (Cargo, Go, Snap, Flatpak, GitHub, APT, Pipx) -->
+          </div>
+        </section>
+
+        <!-- VIEW 2: CHECKLIST & EXPLORER -->
+        <section id="view-checklist" class="tab-view" style="display: none;">
+          <div class="view-hero">
+            <div class="hero-title">Cybersecurity Tool Checklist & Explorer</div>
+            <div class="hero-subtitle">Audit installed utilities, track learning progress, inspect command syntax, real-world incident scenarios, and official references across APT, Cargo, Go, Snap, Flatpak, and GitHub clones.</div>
+          </div>
+
+          <!-- Filter Pills -->
+          <div class="filter-pills-bar" id="category-filter-pills">
+            <button class="pill-btn active" data-cat="all">All Domains</button>
+            <button class="pill-btn" data-cat="Information Gathering">Info Gathering</button>
+            <button class="pill-btn" data-cat="Web Applications">Web Applications</button>
+            <button class="pill-btn" data-cat="Password Attacks">Password Attacks</button>
+            <button class="pill-btn" data-cat="Wireless Attacks">Wireless</button>
+            <button class="pill-btn" data-cat="Active Directory & Post-Exploitation">Active Directory</button>
+            <button class="pill-btn" data-cat="Sniffing & Spoofing">Sniffing & Spoofing</button>
+            <button class="pill-btn" data-cat="Exploitation Tools">Exploitation</button>
+            <button class="pill-btn" data-cat="Forensics">Forensics</button>
+            <button class="pill-btn" data-cat="Reverse Engineering">Reverse Eng</button>
+            <button class="pill-btn" data-cat="Privilege Escalation">Privilege Escalation</button>
+          </div>
+
+          <!-- Secondary Filter Bar -->
+          <div style="display: flex; gap: 12px; margin-bottom: 14px; flex-wrap: wrap;">
+            <select id="filter-source" class="status-select" style="padding: 8px 14px; font-size: 13px;">
+              <option value="all">All Installation Methods</option>
+              <option value="APT (System)">APT (System Packages)</option>
+              <option value="Cargo (Rust)">Cargo (Rust Binaries)</option>
+              <option value="Go Binary">Go Binaries</option>
+              <option value="GitHub Clone">GitHub Clones</option>
+              <option value="Snap">Snap Packages</option>
+              <option value="Flatpak">Flatpak</option>
+              <option value="Pipx / Python">Pipx / Python</option>
+              <option value="Custom /opt">Custom /opt Tools</option>
+              <option value="AppImage">AppImage Binaries</option>
+            </select>
+            <select id="filter-installed" class="status-select" style="padding: 8px 14px; font-size: 13px;">
+              <option value="all">All Installation States</option>
+              <option value="1">Installed & Ready Only</option>
+              <option value="0">Missing (Checklist to Install)</option>
+            </select>
+            <select id="filter-status" class="status-select" style="padding: 8px 14px; font-size: 13px;">
+              <option value="all">All Checklist Statuses</option>
+              <option value="not_started">Not Started</option>
+              <option value="learning">Learning</option>
+              <option value="practicing">Practicing</option>
+              <option value="mastered">Mastered</option>
+            </select>
+            <button class="pill-btn" id="filter-favorites-btn">Favorites Only</button>
+            <button class="btn btn-secondary" id="btn-reset-filters" style="font-size: 12px; padding: 6px 14px; margin-left: auto;" onclick="resetAllFilters()">
+              Clear All Filters
+            </button>
+          </div>
+
+          <!-- Active Filter & Count Toolbar -->
+          <div id="filter-summary-bar" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; padding: 10px 16px; background-color: var(--bg-card); border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); flex-wrap: wrap; gap: 10px;">
+            <div style="font-size: 13px; color: var(--text-secondary); display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <span id="tools-result-count" style="font-weight: 700; color: var(--spotify-green);">Showing tools...</span>
+              <span id="active-filter-tags" style="display: inline-flex; gap: 6px; flex-wrap: wrap;"></span>
+            </div>
+            <div style="font-size: 12px; color: var(--text-muted);" id="filter-hint-text">
+              Click any tool card to view cheatsheets, scenarios &amp; references
+            </div>
+          </div>
+
+          <!-- Tools Grid -->
+          <div class="tools-grid" id="tools-container">
+            <!-- Dynamically populated -->
+          </div>
+        </section>
+
+        <!-- VIEW 3: LIVE MONITOR & STATISTICS -->
+        <section id="view-monitor" class="tab-view" style="display: none;">
+          <div class="view-hero">
+            <div class="hero-title">Real-Time Process Monitor & Usage Times</div>
+            <div class="hero-subtitle">Tracks process execution counts, active runtime duration, and system resource consumption across all security tools.</div>
+          </div>
+
+          <!-- Live Running Table -->
+          <div class="advisor-card" style="margin-bottom: 24px;">
+            <h3 style="font-size: 18px; font-weight: 800; margin-bottom: 14px; display: flex; align-items: center; gap: 10px;">
+              <div class="pulse-dot"></div>
+              Live Active Security Processes
+            </h3>
+            <div id="live-monitor-table-container">
+              <!-- Live process rows -->
+            </div>
+          </div>
+
+          <!-- Lifetime Leaderboard -->
+          <div class="advisor-card" style="margin-bottom: 24px;">
+            <h3 style="font-size: 18px; font-weight: 800; margin-bottom: 14px;">Lifetime App Usage Leaderboard</h3>
+            <div id="top-usage-table-container">
+              <!-- Top tools table -->
+            </div>
+          </div>
+
+          <!-- Recent Sessions Log -->
+          <div class="advisor-card">
+            <h3 style="font-size: 18px; font-weight: 800; margin-bottom: 14px;">Recent Execution History</h3>
+            <div id="recent-sessions-container">
+              <!-- Session history -->
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW 4: INCIDENT & SCENARIO ADVISOR -->
+        <section id="view-advisor" class="tab-view" style="display: none;">
+          <div class="view-hero">
+            <div class="hero-title">Incident & Scenario Advisor</div>
+            <div class="hero-subtitle">Paste any security scenario, SOC alert, pentest objective, or CTF problem. CyberPulse recommends the optimal tools on your machine and generates actionable playbooks.</div>
+          </div>
+
+          <div class="advisor-card">
+            <div style="font-size: 14px; font-weight: 700; color: var(--spotify-green); margin-bottom: 8px;">
+              SCENARIO / INCIDENT DESCRIPTION
+            </div>
+            <textarea id="scenario-input" class="scenario-textarea" placeholder="Paste your incident or problem here... E.g., 'We noticed an unknown workstation sending repetitive Kerberos TGS requests on port 88 and dumping NTLM credentials over SMB shares.'"></textarea>
+
+            <!-- Quick Scenario Example Chips -->
+            <div class="example-chips">
+              <span style="font-size: 12px; color: var(--text-muted); align-self: center;">Quick Presets:</span>
+              <button class="example-chip" data-preset="ad">Active Directory Kerberoasting</button>
+              <button class="example-chip" data-preset="web">SQL Injection on Web API</button>
+              <button class="example-chip" data-preset="c2">Malware C2 PCAP Triage</button>
+              <button class="example-chip" data-preset="wifi">WPA2/WPA3 Handshake Capture</button>
+              <button class="example-chip" data-preset="privesc">Linux SUID Privilege Escalation</button>
+              <button class="example-chip" data-preset="forensics">Ransomware Memory Analysis</button>
+            </div>
+
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-secondary); cursor: pointer;">
+                  <input type="checkbox" id="advisor-force-offline"> Force Offline Engine Only
+                </label>
+              </div>
+              <button class="btn btn-primary" id="btn-run-advisor">
+                <svg style="width: 16px; height: 16px; fill: currentColor;" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                Analyze Incident & Recommend Tools
+              </button>
+            </div>
+          </div>
+
+          <!-- Advisor Output Container -->
+          <div id="advisor-output" style="display: none;">
+            <!-- Dynamically populated -->
+          </div>
+        </section>
+
+        <!-- VIEW 5: SHARE & EXPORT -->
+        <section id="view-share" class="tab-view" style="display: none;">
+          <div class="view-hero">
+            <div class="hero-title">Share CyberPulse & Export Data</div>
+            <div class="hero-subtitle">CyberPulse is self-contained on your Desktop in <code>~/Desktop/CyberPulse</code>. Bundle or export your checklist to share with teammates, students, or colleagues.</div>
+          </div>
+
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <div class="metric-header">
+                <span class="metric-title">JSON Checklist Export</span>
+                <div class="metric-icon"><svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg></div>
+              </div>
+              <div style="font-size: 14px; color: var(--text-secondary); margin-bottom: 16px;">
+                Export all 260+ tools, installed statuses, syntax examples, learning links, and your personalized checklist progress.
+              </div>
+              <a href="/api/export" class="btn btn-primary" download>Export Checklist (.json)</a>
+            </div>
+
+            <div class="metric-card">
+              <div class="metric-header">
+                <span class="metric-title">Share Entire Codebase</span>
+                <div class="metric-icon"><svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg></div>
+              </div>
+              <div style="font-size: 14px; color: var(--text-secondary); margin-bottom: 16px;">
+                Located on your desktop at <code>/home/mathewrean/Desktop/CyberPulse</code>. Run <code>./share_bundle.sh</code> to create a ready-to-distribute archive.
+              </div>
+              <div class="code-snippet">
+                <span>cd ~/Desktop/CyberPulse && ./share_bundle.sh</span>
+                <button class="copy-btn" onclick="navigator.clipboard.writeText('cd ~/Desktop/CyberPulse && ./share_bundle.sh')">📋</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- Persistent Bottom "Now Playing" Bar -->
+  <footer class="bottom-player-bar">
+    <div class="player-left">
+      <div class="pulse-dot" id="bar-pulse-dot"></div>
+      <div>
+        <div style="font-size: 13px; font-weight: 700; color: var(--text-primary);" id="bar-tool-name">CyberPulse Monitor Active</div>
+        <div style="font-size: 11px; color: var(--spotify-green);" id="bar-tool-status">Tracking system tool execution</div>
+      </div>
+    </div>
+    
+    <div class="player-center">
+      <span id="bar-active-count-label">0 tools active</span>
+      <span>•</span>
+      <span id="bar-session-timer">Uptime: 00h 00m</span>
+    </div>
+
+    <div class="player-right">
+      <button class="btn btn-secondary" style="padding: 6px 14px; font-size: 12px;" onclick="switchTab('advisor')">
+        Incident Advisor
+      </button>
+      <button class="btn btn-primary" style="padding: 6px 14px; font-size: 12px;" onclick="switchTab('checklist')">
+        Open Checklist
+      </button>
+    </div>
+  </footer>
+
+  <!-- Tool Detail Modal -->
+  <div class="modal-overlay" id="tool-modal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div class="modal-title" id="modal-tool-name">Tool Name</div>
+          <span class="badge" id="modal-tool-badge">Installed</span>
+        </div>
+        <button class="btn-icon" id="modal-close-btn">&times;</button>
+      </div>
+
+      <div class="modal-body" id="modal-content">
+        <!-- Dynamically populated -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

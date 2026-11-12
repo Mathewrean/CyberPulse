@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=CyberPulse Security Suite
+Comment=Cybersecurity Tool Checklist, Process Monitor & Incident Advisor
+Exec=bash -c "/home/mathewrean/Desktop/CyberPulse/start.sh"
+Icon=/home/mathewrean/Desktop/CyberPulse/static/icons/cyberpulse.svg
+Terminal=false
+Categories=Utility;Security;Development;Network;
+StartupNotify=true
