@@ -5,12 +5,13 @@ Spotify Edition for Kali Linux / Debian
 Main entry point.
 """
 
+import argparse
 import os
 import sys
-import argparse
+
 import uvicorn
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 # Ensure package directory is on python path
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -18,9 +19,9 @@ if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
 from backend.api import app
-from backend.database import init_db, get_all_tools
-from backend.scanner import scan_all_tools
 from backend.collectors import get_collector_manager
+from backend.database import get_all_tools, init_db
+from backend.scanner import scan_all_tools
 
 # Mount static files directory
 STATIC_DIR = os.path.join(BASE_DIR, "static")
@@ -69,11 +70,11 @@ def main():
         print(f"[CyberPulse] Scan complete: {res}")
         return
 
-    print(f"================================================================")
-    print(f"  CyberPulse Security Suite (Spotify Edition)")
+    print("================================================================")
+    print("  CyberPulse Security Suite (Spotify Edition)")
     print(f"  Web Dashboard: http://{args.host}:{args.port}")
     print(f"  Codebase Path: {BASE_DIR}")
-    print(f"================================================================")
+    print("================================================================")
     
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")
 

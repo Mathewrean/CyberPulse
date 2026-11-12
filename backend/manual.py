@@ -15,14 +15,14 @@ Every worked example carries placeholders (<TARGET_IP>, <WORDLIST>, ...) and
 the banner: "Authorised targets and your own lab only."
 """
 
-import os
+import glob as _glob
 import json
+import os
 import re
 import shutil
 import subprocess
-import glob as _glob
-from typing import Dict, Any, List, Optional
 from datetime import datetime
+from typing import Any
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(BASE_DIR, "data")
@@ -45,25 +45,25 @@ def _cache_path(tool: str) -> str:
     return os.path.join(CACHE_DIR, f"{tool}.json")
 
 
-def _load_cache(tool: str) -> Optional[Dict[str, Any]]:
+def _load_cache(tool: str) -> dict[str, Any] | None:
     p = _cache_path(tool)
     if not os.path.exists(p):
         return None
     try:
-        with open(p, "r", encoding="utf-8") as fh:
+        with open(p, encoding="utf-8") as fh:
             return json.load(fh)
     except Exception:
         return None
 
 
-def _save_cache(tool: str, manual: Dict[str, Any]) -> None:
+def _save_cache(tool: str, manual: dict[str, Any]) -> None:
     _ensure_dirs()
     manual["cached_at"] = datetime.utcnow().isoformat()
     with open(_cache_path(tool), "w", encoding="utf-8") as fh:
         json.dump(manual, fh, indent=2)
 
 
-def _run(cmd: List[str], timeout: float = 4.0) -> str:
+def _run(cmd: list[str], timeout: float = 4.0) -> str:
     try:
         res = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
         return res.stdout or ""
@@ -71,14 +71,14 @@ def _run(cmd: List[str], timeout: float = 4.0) -> str:
         return ""
 
 
-def _try_tldr(tool: str) -> Optional[str]:
+def _try_tldr(tool: str) -> str | None:
     if shutil.which("tldr") is None:
         return None
     out = _run(["tldr", tool])
     return out.strip() or None
 
 
-def _try_man(tool: str) -> Optional[str]:
+def _try_man(tool: str) -> str | None:
     if shutil.which("man") is None:
         return None
     out = _run(["man", tool])
@@ -88,7 +88,7 @@ def _try_man(tool: str) -> Optional[str]:
     return text.strip() or None
 
 
-def _try_help(tool: str) -> Optional[str]:
+def _try_help(tool: str) -> str | None:
     binary = shutil.which(tool)
     if not binary:
         return None
@@ -98,12 +98,12 @@ def _try_help(tool: str) -> Optional[str]:
     return out.strip() or None
 
 
-def _try_doc(tool: str) -> Optional[str]:
+def _try_doc(tool: str) -> str | None:
     for pattern in [f"/usr/share/doc/{tool}", f"/usr/share/doc/{tool}*"]:
         for path in sorted(glob_paths(pattern)):
             if os.path.isfile(path):
                 try:
-                    with open(path, "r", errors="ignore") as fh:
+                    with open(path, errors="ignore") as fh:
                         text = fh.read(4000)
                     if text.strip():
                         return text.strip()
@@ -112,24 +112,23 @@ def _try_doc(tool: str) -> Optional[str]:
     return None
 
 
-def glob_paths(pattern: str) -> List[str]:
-    import glob as _glob
+def glob_paths(pattern: str) -> list[str]:
     return _glob.glob(pattern)
 
 
-def _try_curated(tool: str) -> Optional[Dict[str, Any]]:
+def _try_curated(tool: str) -> dict[str, Any] | None:
     _ensure_dirs()
     p = os.path.join(KNOWLEDGE_DIR, f"{tool}.json")
     if not os.path.exists(p):
         return None
     try:
-        with open(p, "r", encoding="utf-8") as fh:
+        with open(p, encoding="utf-8") as fh:
             return json.load(fh)
     except Exception:
         return None
 
 
-def _try_curated_kb(tool: str) -> Optional[Dict[str, Any]]:
+def _try_curated_kb(tool: str) -> dict[str, Any] | None:
     """Fallback to the existing knowledge_base.py CURATED_TOOLS catalogue."""
     try:
         from .knowledge_base import CURATED_TOOLS  # type: ignore
@@ -153,7 +152,7 @@ def _placeholderize(cmd: str) -> str:
 
 
 def build_manual(tool: str, display_name: str = "", category: str = "",
-                 curated: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+                 curated: dict[str, Any] | None = None) -> dict[str, Any]:
     """Build (or load from cache) a structured manual for `tool`."""
     cached = _load_cache(tool)
     if cached:
@@ -175,7 +174,7 @@ def build_manual(tool: str, display_name: str = "", category: str = "",
                                          ("man" if man_text else
                                           ("help" if help_text else
                                            ("doc" if doc_text else "none"))))
-    manual: Dict[str, Any] = {
+    manual: dict[str, Any] = {
         "name": tool,
         "display_name": display_name or tool,
         "category": category or "General Security",
@@ -229,7 +228,7 @@ def build_manual(tool: str, display_name: str = "", category: str = "",
     return manual
 
 
-def _options_from_examples(examples: List[Dict[str, Any]]) -> List[Dict[str, str]]:
+def _options_from_examples(examples: list[dict[str, Any]]) -> list[dict[str, str]]:
     opts = []
     for ex in examples[:8]:
         cmd = ex.get("cmd", "")
@@ -239,7 +238,7 @@ def _options_from_examples(examples: List[Dict[str, Any]]) -> List[Dict[str, str
     return opts
 
 
-def _examples_from_curated(examples: List[Dict[str, Any]]) -> List[Dict[str, str]]:
+def _examples_from_curated(examples: list[dict[str, Any]]) -> list[dict[str, str]]:
     out = []
     levels = ["Beginner", "Beginner", "Intermediate", "Intermediate", "Advanced"]
     for i, ex in enumerate(examples[:10]):
@@ -253,7 +252,7 @@ def _examples_from_curated(examples: List[Dict[str, Any]]) -> List[Dict[str, str
     return out
 
 
-def _options_from_text(text: str) -> List[Dict[str, str]]:
+def _options_from_text(text: str) -> list[dict[str, str]]:
     opts = []
     for line in text.splitlines():
         m = re.match(r"\s*(-[a-zA-Z0-9]+|--[a-zA-Z0-9\-]+)\b(.*)", line)
@@ -262,7 +261,7 @@ def _options_from_text(text: str) -> List[Dict[str, str]]:
     return opts[:10]
 
 
-def _examples_from_text(text: str) -> List[Dict[str, str]]:
+def _examples_from_text(text: str) -> list[dict[str, str]]:
     out = []
     seen = set()
     for line in text.splitlines():
@@ -297,7 +296,7 @@ def _summarize(text: str) -> str:
     return text[:200].strip()
 
 
-def explain_command(command: str) -> Dict[str, Any]:
+def explain_command(command: str) -> dict[str, Any]:
     """Offline flag-by-flag breakdown of a command. AI optional (not used here)."""
     tokens = command.split()
     if not tokens:
@@ -319,6 +318,6 @@ def explain_command(command: str) -> Dict[str, Any]:
     }
 
 
-def list_cached_manuals() -> List[str]:
+def list_cached_manuals() -> list[str]:
     _ensure_dirs()
     return sorted([f[:-5] for f in os.listdir(CACHE_DIR) if f.endswith(".json")])

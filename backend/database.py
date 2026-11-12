@@ -3,11 +3,11 @@ CyberPulse SQLite Database Layer
 Handles database schema creation, tool storage, stats tracking, and settings.
 """
 
-import sqlite3
-import os
 import json
+import os
+import sqlite3
 from datetime import datetime
-from typing import List, Dict, Any, Optional
+from typing import Any
 
 from .config import get
 
@@ -183,7 +183,7 @@ def init_db():
     conn.close()
 
 # Tool Queries
-def upsert_tool(tool_data: Dict[str, Any]):
+def upsert_tool(tool_data: dict[str, Any]):
     conn = get_connection()
     cursor = conn.cursor()
     
@@ -244,7 +244,7 @@ def upsert_tool(tool_data: Dict[str, Any]):
     conn.commit()
     conn.close()
 
-def get_all_tools() -> List[Dict[str, Any]]:
+def get_all_tools() -> list[dict[str, Any]]:
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("""
@@ -271,7 +271,7 @@ def get_all_tools() -> List[Dict[str, Any]]:
     conn.close()
     return tools
 
-def update_tool_status(tool_name: str, status: Optional[str] = None, is_favorite: Optional[int] = None, notes: Optional[str] = None):
+def update_tool_status(tool_name: str, status: str | None = None, is_favorite: int | None = None, notes: str | None = None):
     conn = get_connection()
     cursor = conn.cursor()
     updates = []
@@ -488,13 +488,13 @@ def set_retention(key: str, value: str):
     conn.close()
 
 
-def cleanup_retention() -> Dict[str, int]:
+def cleanup_retention() -> dict[str, int]:
     """Delete usage_sessions and scenario_history rows older than retention days.
     Returns counts of deleted rows per table. 0 days = keep forever."""
     from datetime import datetime, timedelta
     conn = get_connection()
     cursor = conn.cursor()
-    deleted: Dict[str, int] = {}
+    deleted: dict[str, int] = {}
     now = datetime.utcnow()
 
     usage_days = int(get_retention("usage_sessions_days", "0") or 0)
@@ -514,11 +514,11 @@ def cleanup_retention() -> Dict[str, int]:
     return deleted
 
 
-def wipe_all_data() -> Dict[str, int]:
+def wipe_all_data() -> dict[str, int]:
     """One-click wipe of all usage and scenario data (keeps tool catalogue)."""
     conn = get_connection()
     cursor = conn.cursor()
-    counts: Dict[str, int] = {}
+    counts: dict[str, int] = {}
     for table in ("usage_sessions", "tool_stats", "scenario_history"):
         cursor.execute(f"SELECT COUNT(*) FROM {table}")
         counts[table] = cursor.fetchone()[0]
@@ -527,7 +527,7 @@ def wipe_all_data() -> Dict[str, int]:
     conn.close()
     return counts
 
-def save_scenario_query(query: str, category: str, tools: List[str], playbook: Dict[str, Any]):
+def save_scenario_query(query: str, category: str, tools: list[str], playbook: dict[str, Any]):
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("""
@@ -537,7 +537,7 @@ def save_scenario_query(query: str, category: str, tools: List[str], playbook: D
     conn.commit()
     conn.close()
 
-def get_scenario_history(limit: int = 10) -> List[Dict[str, Any]]:
+def get_scenario_history(limit: int = 10) -> list[dict[str, Any]]:
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM scenario_history ORDER BY id DESC LIMIT ?", (limit,))
@@ -553,7 +553,7 @@ def get_scenario_history(limit: int = 10) -> List[Dict[str, Any]]:
 
 
 # --- Manual lab session helpers ---
-def start_lab_session(session_id: str, name: str = "", target: str = "", notes: str = "", tools: List[str] = None) -> None:
+def start_lab_session(session_id: str, name: str = "", target: str = "", notes: str = "", tools: list[str] = None) -> None:
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("""
@@ -572,7 +572,7 @@ def stop_lab_session(session_id: str) -> None:
     conn.commit()
     conn.close()
 
-def get_lab_sessions(limit: int = 20) -> List[Dict[str, Any]]:
+def get_lab_sessions(limit: int = 20) -> list[dict[str, Any]]:
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM lab_sessions ORDER BY start_time DESC LIMIT ?", (limit,))

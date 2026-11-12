@@ -12,18 +12,16 @@ Deep-scans:
 9. AppImages (*.AppImage) and /opt custom builds
 """
 
-import os
 import glob
+import os
 import shutil
 import subprocess
-import json
-import re
 from datetime import datetime
-from typing import Dict, Any, List, Set
+from typing import Any
 
-from .knowledge_base import CURATED_TOOLS
-from .database import upsert_tool, set_setting
 from .config import custom_paths
+from .database import set_setting, upsert_tool
+from .knowledge_base import CURATED_TOOLS
 
 # Augment process PATH to ensure all user runtime locations are searchable
 EXTRA_PATHS = [
@@ -122,7 +120,7 @@ def detect_source_from_path(binary_path: str) -> str:
         return "Custom /opt"
     return "APT (System)"
 
-def get_installed_dpkg_cache() -> Dict[str, str]:
+def get_installed_dpkg_cache() -> dict[str, str]:
     """Retrieves all installed debian packages in a single fast call."""
     pkgs = {}
     try:
@@ -140,7 +138,7 @@ def get_installed_dpkg_cache() -> Dict[str, str]:
         pass
     return pkgs
 
-def scan_all_tools() -> Dict[str, Any]:
+def scan_all_tools() -> dict[str, Any]:
     dpkg_cache = get_installed_dpkg_cache()
     discovered_tools = {}
 
@@ -214,7 +212,7 @@ def scan_all_tools() -> Dict[str, Any]:
                     "display_name": f"{clean_name} (Rust/Cargo)",
                     "category": cat,
                     "subcategory": "Rust Security Tool",
-                    "description": f"High-performance utility compiled with Rust and installed via Cargo into ~/.cargo/bin.",
+                    "description": "High-performance utility compiled with Rust and installed via Cargo into ~/.cargo/bin.",
                     "installed": True,
                     "binary_path": bin_path,
                     "package_name": clean_name,
@@ -249,7 +247,7 @@ def scan_all_tools() -> Dict[str, Any]:
                     "display_name": f"{clean_name} (Go)",
                     "category": cat,
                     "subcategory": "Go Binary",
-                    "description": f"Compiled Golang security tool installed in ~/go/bin.",
+                    "description": "Compiled Golang security tool installed in ~/go/bin.",
                     "installed": True,
                     "binary_path": bin_path,
                     "package_name": clean_name,
@@ -260,7 +258,7 @@ def scan_all_tools() -> Dict[str, Any]:
                     "mitre_techniques": [],
                     "syntax_examples": [{"cmd": f"{clean_name} -h", "desc": "Show Go CLI flags."}],
                     "scenarios": [{"title": f"Operation with {clean_name}", "incident_type": cat, "description": f"Run Go binary {clean_name}.", "steps": [f"{clean_name} -h"]}],
-                    "learning_refs": [{"title": "Go Tool Guide", "url": f"https://pkg.go.dev/", "type": "doc"}]
+                    "learning_refs": [{"title": "Go Tool Guide", "url": "https://pkg.go.dev/", "type": "doc"}]
                 }
 
     # ---------------------------------------------------------
@@ -370,7 +368,7 @@ def scan_all_tools() -> Dict[str, Any]:
                 "display_name": f"{clean_name} (Pipx)",
                 "category": "Web Applications" if clean_name in ["httpie", "requests"] else "General Security",
                 "subcategory": "Python CLI Utility",
-                "description": f"Python CLI application installed in isolated virtual environment via Pipx.",
+                "description": "Python CLI application installed in isolated virtual environment via Pipx.",
                 "installed": True,
                 "binary_path": bin_path,
                 "package_name": clean_name,
@@ -399,7 +397,7 @@ def scan_all_tools() -> Dict[str, Any]:
         "/opt"
     ]
     
-    seen_git_paths: Set[str] = set()
+    seen_git_paths: set[str] = set()
     for sdir in search_dirs:
         if not os.path.exists(sdir):
             continue
@@ -432,7 +430,7 @@ def scan_all_tools() -> Dict[str, Any]:
                     cfg_file = os.path.join(repo_dir, ".git", "config")
                     origin_url = ""
                     if os.path.exists(cfg_file):
-                        with open(cfg_file, "r", errors="ignore") as fp:
+                        with open(cfg_file, errors="ignore") as fp:
                             for l in fp:
                                 if "url =" in l:
                                     origin_url = l.split("=", 1)[1].strip()
@@ -443,7 +441,7 @@ def scan_all_tools() -> Dict[str, Any]:
                         rm_p = os.path.join(repo_dir, rm_candidate)
                         if os.path.exists(rm_p):
                             try:
-                                with open(rm_p, "r", errors="ignore") as fp:
+                                with open(rm_p, errors="ignore") as fp:
                                     for line in fp:
                                         clean_l = line.strip()
                                         if clean_l and not clean_l.startswith(("#", "!", "<", "[")):
@@ -511,7 +509,7 @@ def scan_all_tools() -> Dict[str, Any]:
     for f in kali_desktop_files:
         try:
             entry = {}
-            with open(f, "r", errors="ignore") as fp:
+            with open(f, errors="ignore") as fp:
                 for line in fp:
                     if "=" in line:
                         k, v = line.strip().split("=", 1)

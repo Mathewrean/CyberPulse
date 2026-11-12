@@ -6,9 +6,9 @@ Loads config.yaml (shipped defaults) and overlays config.local.yaml
 used by the database, scanner, advisor and API layers.
 """
 
-import os
 import copy
-from typing import Any, Dict, List, Optional
+import os
+from typing import Any
 
 try:
     import yaml  # type: ignore
@@ -19,7 +19,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_CONFIG_PATH = os.path.join(BASE_DIR, "config.yaml")
 LOCAL_CONFIG_PATH = os.path.join(BASE_DIR, "config.local.yaml")
 
-_DEFAULTS: Dict[str, Any] = {
+_DEFAULTS: dict[str, Any] = {
     "version": 1,
     "host": "127.0.0.1",
     "port": 8844,
@@ -45,10 +45,10 @@ _DEFAULTS: Dict[str, Any] = {
     },
 }
 
-_config: Dict[str, Any] = {}
+_config: dict[str, Any] = {}
 
 
-def _deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
+def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
     result = copy.deepcopy(base)
     for k, v in override.items():
         if (
@@ -62,19 +62,19 @@ def _deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any
     return result
 
 
-def _load_yaml(path: str) -> Dict[str, Any]:
+def _load_yaml(path: str) -> dict[str, Any]:
     if not os.path.exists(path):
         return {}
     if yaml is None:
         return {}
-    with open(path, "r", encoding="utf-8") as fh:
+    with open(path, encoding="utf-8") as fh:
         data = yaml.safe_load(fh) or {}
     if not isinstance(data, dict):
         return {}
     return data
 
 
-def load_config() -> Dict[str, Any]:
+def load_config() -> dict[str, Any]:
     global _config
     if _config:
         return _config
@@ -84,7 +84,7 @@ def load_config() -> Dict[str, Any]:
     return _config
 
 
-def get(section: str, key: Optional[str] = None, default: Any = None) -> Any:
+def get(section: str, key: str | None = None, default: Any = None) -> Any:
     cfg = load_config()
     section_data = cfg.get(section, {})
     if key is None:
@@ -100,7 +100,7 @@ def ai_redact() -> bool:
     return bool(get("ai", "redact_before_send", True))
 
 
-def custom_paths() -> List[str]:
+def custom_paths() -> list[str]:
     paths = get("custom_paths", default=[]) or []
     return [p for p in paths if p]
 

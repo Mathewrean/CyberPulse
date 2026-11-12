@@ -14,23 +14,24 @@ Collectors:
   f) manual lab session      - Start/Stop lab session button
 """
 
-import os
-import re
-import time
-import json
 import glob
+import json
+import os
 import shutil
-import subprocess
 import threading
+import time
 from datetime import datetime
-from typing import Dict, Any, List, Optional, Set, Tuple
+from typing import Any
 
 import psutil
 
-from .config import get, monitor_interval
+from .config import monitor_interval
 from .database import (
-    get_connection, record_usage_event, get_all_tools,
-    start_lab_session, stop_lab_session, get_lab_sessions,
+    get_all_tools,
+    get_lab_sessions,
+    record_usage_event,
+    start_lab_session,
+    stop_lab_session,
 )
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
@@ -40,11 +41,11 @@ WRAPPER_LOG = os.path.join(DATA_DIR, "wrapper.log")
 # Dedup window (seconds): same pid+tool+start within this window is one event.
 DEDUP_WINDOW_SEC = 3.0
 
-_TOOL_NAME_CACHE: Dict[str, str] = {}
+_TOOL_NAME_CACHE: dict[str, str] = {}
 _TOOL_NAME_CACHE_TS = 0.0
 
 
-def _resolve_tool_name(cmdline: str, proc_name: str) -> Optional[str]:
+def _resolve_tool_name(cmdline: str, proc_name: str) -> str | None:
     """Best-effort mapping of a process to a known tool name."""
     now = time.time()
     global _TOOL_NAME_CACHE_TS
@@ -91,10 +92,10 @@ class CollectorPlugin:
     def stop(self) -> None:
         pass
 
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> dict[str, Any]:
         return {"name": self.name, "enabled": self.enabled, "available": False}
 
-    def collect(self) -> List[Dict[str, Any]]:
+    def collect(self) -> list[dict[str, Any]]:
         """Return list of raw usage events to ingest."""
         return []
 
@@ -107,9 +108,9 @@ class PsutilCollector(CollectorPlugin):
     def __init__(self, base_interval: float = 3.0):
         self.base_interval = base_interval
         self._running = False
-        self._thread: Optional[threading.Thread] = None
+        self._thread: threading.Thread | None = None
         self._lock = threading.Lock()
-        self._active: Dict[int, Dict[str, Any]] = {}
+        self._active: dict[int, dict[str, Any]] = {}
 
     def start(self):
         if self._running:
@@ -135,10 +136,10 @@ class PsutilCollector(CollectorPlugin):
             interval = 0.5 if time.time() < fast_until else self.base_interval
             time.sleep(interval)
 
-    def _check(self) -> List[Dict[str, Any]]:
-        events: List[Dict[str, Any]] = []
+    def _check(self) -> list[dict[str, Any]]:
+        events: list[dict[str, Any]] = []
         now = time.time()
-        current_pids: Set[int] = set()
+        current_pids: set[int] = set()
         for proc in psutil.process_iter(['pid', 'name', 'cmdline', 'create_time']):
             try:
                 pid = proc.info['pid']
@@ -179,11 +180,11 @@ class PsutilCollector(CollectorPlugin):
             })
         return events
 
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> dict[str, Any]:
         return {"name": self.name, "enabled": self.enabled,
                 "active": len(self._active)}
 
-    def get_live_status(self) -> List[Dict[str, Any]]:
+    def get_live_status(self) -> list[dict[str, Any]]:
         """Currently running monitored processes with live stats."""
         now = time.time()
         live = []
@@ -218,10 +219,10 @@ class ShellHookCollector(CollectorPlugin):
     enabled = False
 
     def __init__(self):
-        self._last_inode: Optional[int] = None
+        self._last_inode: int | None = None
         self._last_offset = 0
 
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> dict[str, Any]:
         return {"name": self.name, "enabled": self.enabled,
                 "available": os.path.exists(SHELL_LOG) or self.enabled,
                 "hint": "source the rc snippet in ~/.bashrc / ~/.zshrc / ~/.config/fish/config.fish"}
@@ -243,8 +244,8 @@ function cyberpulse_log --on-event fish_postexec
 end
 '''
 
-    def collect(self) -> List[Dict[str, Any]]:
-        events: List[Dict[str, Any]] = []
+    def collect(self) -> list[dict[str, Any]]:
+        events: list[dict[str, Any]] = []
         if not os.path.exists(SHELL_LOG):
             return events
         try:
@@ -256,7 +257,7 @@ end
             if st.st_ino != self._last_inode:
                 self._last_offset = 0
                 self._last_inode = st.st_ino
-            with open(SHELL_LOG, "r", errors="ignore") as fh:
+            with open(SHELL_LOG, errors="ignore") as fh:
                 fh.seek(self._last_offset)
                 lines = fh.readlines()
                 self._last_offset = fh.tell()
@@ -294,24 +295,24 @@ class WrapperCollector(CollectorPlugin):
 
     def __init__(self):
         self.bin_dir = os.path.expanduser("~/.cyberpulse/bin")
-        self._seen: Set[str] = set()
+        self._seen: set[str] = set()
 
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> dict[str, Any]:
         return {"name": self.name, "enabled": self.enabled,
                 "available": os.path.isdir(self.bin_dir),
                 "hint": "place wrappers in ~/.cyberpulse/bin and prepend to PATH"}
 
     def setup_snippet(self) -> str:
-        return f'''# Add CyberPulse wrapper shims to PATH (opt-in)
+        return '''# Add CyberPulse wrapper shims to PATH (opt-in)
 export PATH="$HOME/.cyberpulse/bin:$PATH"
 '''
 
-    def collect(self) -> List[Dict[str, Any]]:
-        events: List[Dict[str, Any]] = []
+    def collect(self) -> list[dict[str, Any]]:
+        events: list[dict[str, Any]] = []
         if not os.path.exists(WRAPPER_LOG):
             return events
         try:
-            with open(WRAPPER_LOG, "r", errors="ignore") as fh:
+            with open(WRAPPER_LOG, errors="ignore") as fh:
                 lines = fh.readlines()
         except Exception:
             return events
@@ -345,14 +346,14 @@ class AuditdCollector(CollectorPlugin):
     name = "auditd"
     enabled = False
 
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> dict[str, Any]:
         has_auditd = shutil.which("auditctl") is not None
         has_execsnoop = shutil.which("execsnoop") is not None or shutil.which("bpftrace") is not None
         return {"name": self.name, "enabled": self.enabled,
                 "available": has_auditd or has_execsnoop,
                 "hint": "requires sudo; skipped gracefully if auditd/eBPF not present"}
 
-    def collect(self) -> List[Dict[str, Any]]:
+    def collect(self) -> list[dict[str, Any]]:
         # Kernel-level collection requires privileged setup; skip gracefully.
         return []
 
@@ -362,7 +363,7 @@ class DesktopCollector(CollectorPlugin):
     name = "desktop"
     enabled = False
 
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> dict[str, Any]:
         desktop_dirs = ["/usr/share/applications", os.path.expanduser("~/.local/share/applications")]
         count = 0
         for d in desktop_dirs:
@@ -371,7 +372,7 @@ class DesktopCollector(CollectorPlugin):
         return {"name": self.name, "enabled": self.enabled,
                 "available": count > 0, "launchers": count}
 
-    def collect(self) -> List[Dict[str, Any]]:
+    def collect(self) -> list[dict[str, Any]]:
         # Passive: .desktop launch tracking would need a session bus monitor;
         # exposed as available inventory rather than background polling.
         return []
@@ -381,7 +382,7 @@ class CollectorManager:
     """Runs all collector plugins, de-duplicates, and persists events."""
 
     def __init__(self):
-        self.plugins: List[CollectorPlugin] = [
+        self.plugins: list[CollectorPlugin] = [
             PsutilCollector(base_interval=monitor_interval()),
             ShellHookCollector(),
             WrapperCollector(),
@@ -389,15 +390,15 @@ class CollectorManager:
             DesktopCollector(),
         ]
         self._running = False
-        self._thread: Optional[threading.Thread] = None
+        self._thread: threading.Thread | None = None
         self._lock = threading.Lock()
         # dedup cache: key -> timestamp
-        self._dedup: Dict[Tuple[str, int, float], float] = {}
+        self._dedup: dict[tuple[str, int, float], float] = {}
 
-    def get_status(self) -> List[Dict[str, Any]]:
+    def get_status(self) -> list[dict[str, Any]]:
         return [p.get_status() for p in self.plugins]
 
-    def get_live_status(self) -> List[Dict[str, Any]]:
+    def get_live_status(self) -> list[dict[str, Any]]:
         for p in self.plugins:
             if p.name == "polling" and hasattr(p, "get_live_status"):
                 return p.get_live_status()
@@ -431,7 +432,7 @@ class CollectorManager:
 
     def _loop(self):
         while self._running:
-            all_events: List[Dict[str, Any]] = []
+            all_events: list[dict[str, Any]] = []
             for p in self.plugins:
                 if not p.enabled:
                     continue
@@ -442,10 +443,10 @@ class CollectorManager:
             self._ingest(all_events)
             time.sleep(1.0)
 
-    def _ingest(self, events: List[Dict[str, Any]]):
+    def _ingest(self, events: list[dict[str, Any]]):
         now = time.time()
         # De-duplicate by (tool_name, pid, start_time)
-        unique: List[Dict[str, Any]] = []
+        unique: list[dict[str, Any]] = []
         with self._lock:
             for e in events:
                 key = (e.get("tool_name", ""), e.get("pid", 0), e.get("start_time", now))
@@ -481,7 +482,7 @@ class CollectorManager:
 
 _lab_lock = threading.Lock()
 
-def lab_start(session_id: str, name: str = "", target: str = "", notes: str = "", tools: List[str] = None) -> None:
+def lab_start(session_id: str, name: str = "", target: str = "", notes: str = "", tools: list[str] = None) -> None:
     with _lab_lock:
         start_lab_session(session_id, name, target, notes, tools)
 
@@ -489,12 +490,12 @@ def lab_stop(session_id: str) -> None:
     with _lab_lock:
         stop_lab_session(session_id)
 
-def lab_list(limit: int = 20) -> List[Dict[str, Any]]:
+def lab_list(limit: int = 20) -> list[dict[str, Any]]:
     return get_lab_sessions(limit)
 
 
 # Global singleton
-_collector_manager: Optional[CollectorManager] = None
+_collector_manager: CollectorManager | None = None
 
 
 def get_collector_manager() -> CollectorManager:

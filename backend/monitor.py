@@ -6,11 +6,13 @@ PIDs, CPU/Memory resource consumption, and logs historic usage sessions.
 
 import threading
 import time
-import psutil
 from datetime import datetime
-from typing import Dict, Any, List, Set
+from typing import Any
+
+import psutil
 
 from .database import get_connection, record_process_start, record_process_stop
+
 
 class ToolUsageMonitor:
     def __init__(self, check_interval: float = 3.0):
@@ -18,9 +20,9 @@ class ToolUsageMonitor:
         self._running = False
         self._thread: threading.Thread = None
         # Track active processes: { pid: { "tool_name": str, "start_time": float, "cmdline": str } }
-        self.active_processes: Dict[int, Dict[str, Any]] = {}
+        self.active_processes: dict[int, dict[str, Any]] = {}
         # Monitored tool names and binary identifiers
-        self.monitored_tools: Dict[str, str] = {} # { binary_or_proc_name_lower: canonical_tool_name }
+        self.monitored_tools: dict[str, str] = {} # { binary_or_proc_name_lower: canonical_tool_name }
         self._lock = threading.Lock()
         self.refresh_monitored_tools()
 
@@ -81,7 +83,7 @@ class ToolUsageMonitor:
             time.sleep(self.check_interval)
 
     def _check_processes(self):
-        current_pids: Set[int] = set()
+        current_pids: set[int] = set()
         
         # Scan running processes
         for proc in psutil.process_iter(['pid', 'name', 'cmdline', 'create_time', 'cpu_percent', 'memory_info']):
@@ -140,7 +142,7 @@ class ToolUsageMonitor:
             duration = max(1.0, now - info["start_time"])
             record_process_stop(info["tool_name"], pid, duration)
 
-    def get_live_status(self) -> List[Dict[str, Any]]:
+    def get_live_status(self) -> list[dict[str, Any]]:
         """Returns list of currently active security processes with live stats."""
         live = []
         now = time.time()

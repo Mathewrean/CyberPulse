@@ -3,26 +3,38 @@ CyberPulse FastAPI REST API
 Serves tools data, statistics, live process monitoring, and scenario advice.
 """
 
-from fastapi import FastAPI, HTTPException, Query, Body
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse
-from pydantic import BaseModel
-from typing import Optional, List, Dict, Any
-import os
 import time
+from typing import Any
 
-from .database import (
-    get_all_tools, update_tool_status, get_statistics,
-    get_setting, set_setting, get_scenario_history, DB_PATH,
-    get_retention, set_retention, cleanup_retention, wipe_all_data,
-    start_lab_session, stop_lab_session, get_lab_sessions,
-)
-from .scanner import scan_all_tools
-from .monitor import get_monitor
-from .collectors import get_collector_manager, lab_start, lab_stop, lab_list, SHELL_LOG, WRAPPER_LOG
-from .manual import build_manual, explain_command, list_cached_manuals
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+
 from .advisor import analyze_scenario, check_internet_connection
-from .config import ai_enabled, ai_redact, custom_paths
+from .collectors import (
+    SHELL_LOG,
+    WRAPPER_LOG,
+    get_collector_manager,
+    lab_list,
+    lab_start,
+    lab_stop,
+)
+from .config import ai_enabled, ai_redact
+from .database import (
+    cleanup_retention,
+    get_all_tools,
+    get_retention,
+    get_scenario_history,
+    get_setting,
+    get_statistics,
+    set_retention,
+    set_setting,
+    update_tool_status,
+    wipe_all_data,
+)
+from .manual import build_manual, explain_command, list_cached_manuals
+from .monitor import get_monitor
+from .scanner import scan_all_tools
 
 app = FastAPI(title="CyberPulse API", version="2.0.0")
 
@@ -30,7 +42,7 @@ app = FastAPI(title="CyberPulse API", version="2.0.0")
 MAX_TEXT_INPUT = 20000
 
 
-def _validate_text(text: Optional[str], field: str = "text") -> str:
+def _validate_text(text: str | None, field: str = "text") -> str:
     if text is None:
         raise HTTPException(status_code=400, detail=f"{field} is required")
     if not isinstance(text, str):
@@ -40,21 +52,21 @@ def _validate_text(text: Optional[str], field: str = "text") -> str:
     return text
 
 class StatusUpdateRequest(BaseModel):
-    checklist_status: Optional[str] = None
-    is_favorite: Optional[int] = None
-    user_notes: Optional[str] = None
+    checklist_status: str | None = None
+    is_favorite: int | None = None
+    user_notes: str | None = None
 
 class ScenarioRequest(BaseModel):
     scenario: str
     force_offline: bool = False
 
 class SettingsUpdateRequest(BaseModel):
-    theme: Optional[str] = None
-    ai_provider: Optional[str] = None
-    ai_enabled: Optional[bool] = None
-    ai_redact_before_send: Optional[bool] = None
-    gemini_api_key: Optional[str] = None
-    openai_api_key: Optional[str] = None
+    theme: str | None = None
+    ai_provider: str | None = None
+    ai_enabled: bool | None = None
+    ai_redact_before_send: bool | None = None
+    gemini_api_key: str | None = None
+    openai_api_key: str | None = None
 
 @app.get("/api/health")
 def health():
@@ -66,12 +78,12 @@ def health():
 
 @app.get("/api/tools")
 def list_tools(
-    search: Optional[str] = None,
-    category: Optional[str] = None,
-    source: Optional[str] = None,
-    installed: Optional[str] = None, # "all", "1", "0"
-    status: Optional[str] = None,
-    favorite: Optional[int] = None
+    search: str | None = None,
+    category: str | None = None,
+    source: str | None = None,
+    installed: str | None = None, # "all", "1", "0"
+    status: str | None = None,
+    favorite: int | None = None
 ):
     all_tools = get_all_tools()
     filtered = []
@@ -155,7 +167,7 @@ def collectors_list():
     return {"collectors": get_collector_manager().get_status()}
 
 @app.post("/api/monitor/collectors/{name}")
-def collectors_set(name: str, payload: Dict[str, Any] = None):
+def collectors_set(name: str, payload: dict[str, Any] = None):
     enabled = bool((payload or {}).get("enabled", False))
     ok = get_collector_manager().set_enabled(name, enabled)
     if not ok:
@@ -224,8 +236,8 @@ def get_retention_endpoint():
     }
 
 class RetentionUpdateRequest(BaseModel):
-    usage_sessions_days: Optional[int] = None
-    scenario_history_days: Optional[int] = None
+    usage_sessions_days: int | None = None
+    scenario_history_days: int | None = None
 
 @app.post("/api/retention")
 def save_retention(payload: RetentionUpdateRequest):
@@ -249,10 +261,10 @@ def wipe_data():
 # --- Manual lab session endpoints ---
 class LabSessionRequest(BaseModel):
     session_id: str
-    name: Optional[str] = ""
-    target: Optional[str] = ""
-    notes: Optional[str] = ""
-    tools: Optional[List[str]] = []
+    name: str | None = ""
+    target: str | None = ""
+    notes: str | None = ""
+    tools: list[str] | None = []
 
 @app.post("/api/lab/sessions")
 def lab_sessions_start(payload: LabSessionRequest):
