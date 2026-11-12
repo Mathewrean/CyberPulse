@@ -630,9 +630,6 @@ def get_streak() -> int:
     if not days:
         return 0
     streak = 0
-    today = date.today().isoformat()
-    # If the most recent day isn't today or yesterday, streak is broken (unless today has activity)
-    cursor_day = date.fromisoformat(days[0]) if days[0] <= today else date.today()
     target = date.today()
     day_set = set(days)
     while target.isoformat() in day_set:

@@ -4,7 +4,6 @@ Serves tools data, statistics, live process monitoring, and scenario advice.
 """
 
 import os
-import shutil
 import time
 from typing import Any
 
@@ -23,6 +22,7 @@ from .collectors import (
 )
 from .config import ai_enabled, ai_redact
 from .database import (
+    DB_PATH,
     cleanup_retention,
     get_all_tools,
     get_mastery_progress,
@@ -37,7 +37,6 @@ from .database import (
     set_setting,
     update_tool_status,
     wipe_all_data,
-    DB_PATH,
 )
 from .manual import build_manual, explain_command, list_cached_manuals
 from .monitor import get_monitor
