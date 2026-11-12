@@ -1137,6 +1137,59 @@ function renderExplain(data) {
   `;
 }
 
+// 9b. Health page
+function setupHealth() {
+  const refresh = document.getElementById("btn-health-refresh");
+  const badge = document.getElementById("health-status-badge");
+  const summary = document.getElementById("health-summary");
+  const grid = document.getElementById("health-grid");
+  const deps = document.getElementById("health-deps");
+
+  async function loadHealth() {
+    try {
+      const res = await fetch("/api/health/detailed");
+      if (!res.ok) throw new Error("health failed");
+      const h = await res.json();
+
+      if (badge) badge.textContent = (h.status || "unknown").toUpperCase();
+      if (badge) badge.style.color = h.status === "healthy" ? "var(--spotify-green)" : "var(--text-muted)";
+      if (summary) {
+        const ai = h.ai || {};
+        summary.innerHTML = `Internet: ${h.internet_connected ? "online" : "offline"} &bull; Collectors: ${h.live_active || 0} active &bull; AI: ${ai.enabled ? "enabled" : "off"} (redact: ${ai.redact_before_send ? "on" : "off"}) &bull; DB: ${(h.database && h.database.size_bytes ? (h.database.size_bytes / 1024).toFixed(1) : 0)} KB`;
+      }
+
+      if (grid) {
+        const collectors = (h.collectors || []).map(c => `
+          <div style="display:flex;justify-content:space-between;padding:6px 8px;border-bottom:1px solid var(--border-subtle);font-size:13px;">
+            <div><strong>${escapeHtml(c.name)}</strong> <span style="color:var(--text-muted);">${c.enabled ? "enabled" : "disabled"}</span></div>
+            <div style="color:var(--spotify-green-dim);">${c.available ? "available" : "unavailable"}</div>
+          </div>
+        `).join("") || "<p style='color:var(--text-muted);'>No collectors.</p>";
+        grid.innerHTML = `<strong>COLLECTORS</strong><div style="margin-top:6px;">${collectors}</div>`;
+      }
+
+      if (deps) {
+        const depList = (h.dependencies || []).map(d => `
+          <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;">
+            <span>${escapeHtml(d.name)}</span>
+            <span style="color:${d.available ? 'var(--spotify-green)' : 'var(--text-muted)'};">${d.available ? 'OK' : 'MISSING'}</span>
+          </div>
+        `).join("");
+        deps.innerHTML = depList;
+        if (h.missing_dependencies && h.missing_dependencies.length) {
+          deps.innerHTML += `<div style="margin-top:6px;color:var(--text-muted);font-size:12px;">Missing: ${h.missing_dependencies.join(", ")}</div>`;
+        }
+      }
+    } catch (e) {
+      if (badge) badge.textContent = "ERROR";
+      if (summary) summary.textContent = "Could not load health data.";
+    }
+  }
+
+  if (refresh) refresh.addEventListener("click", loadHealth);
+  loadHealth();
+}
+
 // 10. Uptime counter
 function updateUptimeTimer() {
   uptimeSeconds++;

@@ -33,6 +33,7 @@ from .database import (
     set_setting,
     update_tool_status,
     wipe_all_data,
+    DB_PATH,
 )
 from .manual import build_manual, explain_command, list_cached_manuals
 from .monitor import get_monitor
