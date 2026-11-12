@@ -29,6 +29,7 @@ from .database import (
     get_scenario_history,
     get_setting,
     get_statistics,
+    get_usage_timeline,
     set_retention,
     set_setting,
     update_tool_status,
@@ -282,6 +283,10 @@ def lab_sessions_stop(session_id: str):
 @app.get("/api/lab/sessions")
 def lab_sessions_list(limit: int = 20):
     return {"sessions": lab_list(limit)}
+
+@app.get("/api/sessions/timeline")
+def sessions_timeline(limit: int = 100):
+    return {"sessions": get_usage_timeline(limit=limit)}
 
 @app.get("/api/manual/{tool}")
 def manual_get(tool: str):

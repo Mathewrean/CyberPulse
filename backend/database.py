@@ -584,3 +584,26 @@ def get_lab_sessions(limit: int = 20) -> list[dict[str, Any]]:
         res.append(d)
     conn.close()
     return res
+
+
+def get_usage_timeline(limit: int = 100) -> list[dict[str, Any]]:
+    """Return usage sessions joined with tool details, newest first, for the timeline view."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+    SELECT s.id, s.tool_name, s.pid, s.session_id, s.start_time, s.end_time,
+           s.duration_seconds, s.cmdline, s.args_hash, s.source_method, s.exit_code,
+           s.cpu_peak, s.mem_peak,
+           t.display_name, t.category
+    FROM usage_sessions s
+    LEFT JOIN tools t ON s.tool_name = t.name
+    ORDER BY s.start_time DESC
+    LIMIT ?
+    """, (limit,))
+    rows = cursor.fetchall()
+    res = []
+    for r in rows:
+        d = dict(r)
+        res.append(d)
+    conn.close()
+    return res

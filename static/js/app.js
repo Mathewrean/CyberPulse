@@ -29,6 +29,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupAdvisor();
   setupManual();
   setupHealth();
+  setupTimeline();
   loadData();
   startLiveMonitor();
   setInterval(updateUptimeTimer, 1000);
@@ -1188,6 +1189,86 @@ function setupHealth() {
 
   if (refresh) refresh.addEventListener("click", loadHealth);
   loadHealth();
+}
+
+// 9c. Session Timeline
+function setupTimeline() {
+  const refresh = document.getElementById("btn-timeline-refresh");
+  const exportBtn = document.getElementById("btn-timeline-export");
+  const filter = document.getElementById("timeline-filter");
+  const list = document.getElementById("timeline-list");
+  const summary = document.getElementById("timeline-summary");
+
+  async function loadTimeline() {
+    try {
+      const res = await fetch("/api/sessions/timeline?limit=200");
+      if (!res.ok) throw new Error("timeline failed");
+      const data = await res.json();
+      const sessions = data.sessions || [];
+      const f = (filter && filter.value) ? filter.value.trim().toLowerCase() : "";
+      const filtered = sessions.filter(s => !f || (s.tool_name || "").toLowerCase().includes(f));
+      if (summary) summary.textContent = `${filtered.length} of ${sessions.length} session events`;
+      if (list) {
+        if (filtered.length === 0) {
+          list.innerHTML = "<p style='color:var(--text-muted);'>No session events recorded yet.</p>";
+        } else {
+          list.innerHTML = filtered.map(s => {
+            const start = s.start_time ? new Date(s.start_time).toLocaleString() : "-";
+            const end = s.end_time ? new Date(s.end_time).toLocaleString() : "-";
+            const dur = s.duration_seconds ? s.duration_seconds.toFixed(1) : 0;
+            const cmd = escapeHtml(s.cmdline || "");
+            return `
+              <div style="border-bottom:1px solid var(--border-subtle);padding:10px 8px;font-size:13px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                  <div style="font-weight:700;color:var(--spotify-green);">${escapeHtml(s.tool_name || 'unknown')}</div>
+                  <div style="color:var(--text-muted);font-size:11px;">${escapeHtml(s.source_method || '')}</div>
+                </div>
+                <div style="margin-bottom:4px;"><strong>PID:</strong> ${s.pid} &bull; <strong>Duration:</strong> ${dur}s &bull; <strong>Exit:</strong> ${s.exit_code ?? '-'}</div>
+                <div style="margin-bottom:2px;"><strong>Start:</strong> ${start} &bull; <strong>End:</strong> ${end}</div>
+                <div style="font-family:monospace;color:var(--text-primary);margin-top:4px;">${cmd}</div>
+              </div>
+            `;
+          }).join("");
+        }
+      }
+    } catch (e) {
+      if (list) list.innerHTML = "<p style='color:var(--text-muted);'>Could not load timeline.</p>";
+    }
+  }
+
+  if (refresh) refresh.addEventListener("click", loadTimeline);
+  if (filter) filter.addEventListener("input", loadTimeline);
+  if (exportBtn) {
+    exportBtn.addEventListener("click", () => {
+      fetch("/api/sessions/timeline?limit=1000")
+        .then(r => r.json())
+        .then(data => {
+          const sessions = data.sessions || [];
+          let md = "# CyberPulse Lab Report\n\n";
+          md += `Generated: ${new Date().toISOString()}\n\n`;
+          md += `## Session Events (${sessions.length})\n\n`;
+          sessions.forEach((s, i) => {
+            md += `### ${i + 1}. ${s.tool_name || 'unknown'}\n`;
+            md += `- **PID:** ${s.pid}  \n`;
+            md += `- **Source:** ${s.source_method || '-'}  \n`;
+            md += `- **Start:** ${s.start_time || '-'}  \n`;
+            md += `- **End:** ${s.end_time || '-'}  \n`;
+            md += `- **Duration:** ${(s.duration_seconds || 0).toFixed(1)}s  \n`;
+            md += `- **Exit Code:** ${s.exit_code ?? '-'}  \n`;
+            md += `- **Command:** \`${(s.cmdline || '').replace(/`/g, '\\`')}\`  \n\n`;
+          });
+          const blob = new Blob([md], {type: "text/markdown"});
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `cyberpulse_lab_report_${new Date().toISOString().slice(0,10)}.md`;
+          a.click();
+          URL.revokeObjectURL(url);
+        })
+        .catch(() => alert("Export failed."));
+    });
+  }
+  loadTimeline();
 }
 
 // 10. Uptime counter
