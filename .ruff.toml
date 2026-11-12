@@ -1,0 +1,7 @@
+[lint]
+select = ["E", "F", "B", "I", "C4", "UP"]
+ignore = ["E501", "B008"]
+exclude = ["backend/__pycache__", ".git", "data", "static", "backend/knowledge_base.py"]
+
+[format]
+quote-style = "double"

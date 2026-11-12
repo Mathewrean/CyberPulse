@@ -5,16 +5,15 @@ Recommends optimal tools (flagging installed vs missing), produces executable pl
 and integrates with online AI/LLM when internet connectivity is active.
 """
 
+import json
 import os
 import re
-import json
 import socket
-import urllib.request
 import urllib.error
-from typing import Dict, Any, List, Optional, Tuple
-from datetime import datetime
+import urllib.request
+from typing import Any
 
-from .database import get_connection, save_scenario_query, get_setting
+from .database import get_connection, get_setting, save_scenario_query
 
 # --- Redaction patterns (data that must not leave the machine) ---
 
@@ -38,13 +37,13 @@ REDACTION_RULES = [
 ]
 
 
-def redact_text(text: str) -> Tuple[str, Dict[str, int]]:
+def redact_text(text: str) -> tuple[str, dict[str, int]]:
     """Return (redacted_text, counts_by_kind). Masks IPs, CIDR, MACs, hashes,
     emails and obvious usernames so sensitive data never leaves the machine."""
-    counts: Dict[str, int] = {}
+    counts: dict[str, int] = {}
     result = text
     labels = ["cidr", "ip", "mac", "hash", "email", "user"]
-    for (regex, repl), label in zip(REDACTION_RULES, labels):
+    for (regex, repl), label in zip(REDACTION_RULES, labels, strict=True):
         matches = regex.findall(result)
         if matches:
             counts[label] = len(matches)
@@ -52,7 +51,7 @@ def redact_text(text: str) -> Tuple[str, Dict[str, int]]:
     return result, counts
 
 
-def preview_outbound(text: str, redact: bool) -> Dict[str, Any]:
+def preview_outbound(text: str, redact: bool) -> dict[str, Any]:
     """Describe exactly what would be sent to an online provider."""
     if redact:
         redacted, counts = redact_text(text)
@@ -79,7 +78,7 @@ def check_internet_connection(timeout: float = 1.5) -> bool:
             sock = socket.create_connection((host, port), timeout=timeout)
             sock.close()
             return True
-        except (socket.timeout, OSError):
+        except (TimeoutError, OSError):
             continue
     return False
 
@@ -171,7 +170,7 @@ INCIDENT_PATTERNS = [
     }
 ]
 
-def analyze_scenario_offline(scenario_text: str) -> Dict[str, Any]:
+def analyze_scenario_offline(scenario_text: str) -> dict[str, Any]:
     """Analyzes a scenario using the built-in threat intelligence engine."""
     text_lower = scenario_text.lower()
     
@@ -255,7 +254,7 @@ def analyze_scenario_offline(scenario_text: str) -> Dict[str, Any]:
     
     return result
 
-def query_online_ai(scenario_text: str, detected_domain: str, candidate_tools: List[str], redact: bool = True) -> Optional[Dict[str, Any]]:
+def query_online_ai(scenario_text: str, detected_domain: str, candidate_tools: list[str], redact: bool = True) -> dict[str, Any] | None:
     """Attempts to query external LLM API if network and API key are configured.
 
     Returns None when AI is disabled, no key is configured, or the call fails.
@@ -301,7 +300,7 @@ def query_online_ai(scenario_text: str, detected_domain: str, candidate_tools: L
     except Exception:
         return None
 
-def analyze_scenario(scenario_text: str, force_offline: bool = False, ai_enabled: bool = False, redact: bool = True) -> Dict[str, Any]:
+def analyze_scenario(scenario_text: str, force_offline: bool = False, ai_enabled: bool = False, redact: bool = True) -> dict[str, Any]:
     """Unified entry point for scenario analysis. Balances offline speed with online depth.
 
     Online AI is opt-in: it only runs when `ai_enabled` is True AND internet is
