@@ -13,13 +13,28 @@ import time
 
 from .database import (
     get_all_tools, update_tool_status, get_statistics,
-    get_setting, set_setting, get_scenario_history, DB_PATH
+    get_setting, set_setting, get_scenario_history, DB_PATH,
+    get_retention, set_retention, cleanup_retention, wipe_all_data,
 )
 from .scanner import scan_all_tools
 from .monitor import get_monitor
 from .advisor import analyze_scenario, check_internet_connection
+from .config import ai_enabled, ai_redact
 
 app = FastAPI(title="CyberPulse API", version="2.0.0")
+
+# Maximum accepted size for free-text inputs (bytes). Prevents abuse.
+MAX_TEXT_INPUT = 20000
+
+
+def _validate_text(text: Optional[str], field: str = "text") -> str:
+    if text is None:
+        raise HTTPException(status_code=400, detail=f"{field} is required")
+    if not isinstance(text, str):
+        raise HTTPException(status_code=400, detail=f"{field} must be a string")
+    if len(text.encode("utf-8")) > MAX_TEXT_INPUT:
+        raise HTTPException(status_code=400, detail=f"{field} too large (max {MAX_TEXT_INPUT // 1024} KB)")
+    return text
 
 class StatusUpdateRequest(BaseModel):
     checklist_status: Optional[str] = None
@@ -33,6 +48,8 @@ class ScenarioRequest(BaseModel):
 class SettingsUpdateRequest(BaseModel):
     theme: Optional[str] = None
     ai_provider: Optional[str] = None
+    ai_enabled: Optional[bool] = None
+    ai_redact_before_send: Optional[bool] = None
     gemini_api_key: Optional[str] = None
     openai_api_key: Optional[str] = None
 
@@ -131,9 +148,10 @@ def monitor_live():
 
 @app.post("/api/advisor/analyze")
 def advisor_analyze(payload: ScenarioRequest):
-    if not payload.scenario.strip():
+    scenario = _validate_text(payload.scenario, "scenario")
+    if not scenario.strip():
         raise HTTPException(status_code=400, detail="Scenario text cannot be empty")
-    result = analyze_scenario(payload.scenario, force_offline=payload.force_offline)
+    result = analyze_scenario(scenario, force_offline=payload.force_offline, ai_enabled=ai_enabled(), redact=ai_redact())
     return result
 
 @app.get("/api/advisor/history")
@@ -145,8 +163,10 @@ def get_settings():
     return {
         "theme": get_setting("theme", "dark"),
         "ai_provider": get_setting("ai_provider", "hybrid"),
+        "ai_enabled": get_setting("ai_enabled", "false"),
+        "ai_redact_before_send": get_setting("ai_redact_before_send", "true"),
         "gemini_api_key": get_setting("gemini_api_key", ""),
-        "last_full_scan": get_setting("last_full_scan", "")
+        "last_full_scan": get_setting("last_full_scan", ""),
     }
 
 @app.post("/api/settings")
@@ -155,9 +175,43 @@ def save_settings(payload: SettingsUpdateRequest):
         set_setting("theme", payload.theme)
     if payload.ai_provider:
         set_setting("ai_provider", payload.ai_provider)
+    if payload.ai_enabled is not None:
+        set_setting("ai_enabled", "true" if payload.ai_enabled else "false")
+    if payload.ai_redact_before_send is not None:
+        set_setting("ai_redact_before_send", "true" if payload.ai_redact_before_send else "false")
     if payload.gemini_api_key is not None:
         set_setting("gemini_api_key", payload.gemini_api_key)
     return {"status": "success"}
+
+
+@app.get("/api/retention")
+def get_retention_endpoint():
+    return {
+        "usage_sessions_days": int(get_retention("usage_sessions_days", "0") or 0),
+        "scenario_history_days": int(get_retention("scenario_history_days", "0") or 0),
+    }
+
+class RetentionUpdateRequest(BaseModel):
+    usage_sessions_days: Optional[int] = None
+    scenario_history_days: Optional[int] = None
+
+@app.post("/api/retention")
+def save_retention(payload: RetentionUpdateRequest):
+    if payload.usage_sessions_days is not None:
+        set_retention("usage_sessions_days", str(payload.usage_sessions_days))
+    if payload.scenario_history_days is not None:
+        set_retention("scenario_history_days", str(payload.scenario_history_days))
+    return {"status": "success"}
+
+@app.post("/api/retention/cleanup")
+def run_retention_cleanup():
+    deleted = cleanup_retention()
+    return {"status": "success", "deleted": deleted}
+
+@app.post("/api/data/wipe")
+def wipe_data():
+    counts = wipe_all_data()
+    return {"status": "success", "wiped": counts}
 
 @app.get("/api/export")
 def export_data():

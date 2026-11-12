@@ -1,44 +1,63 @@
 #!/usr/bin/env bash
 # CyberPulse Status Script
+set -u
+
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 PIDFILE="$DIR/cyberpulse.pid"
+HOST="127.0.0.1"
 PORT=8844
 
+if command -v python3 >/dev/null 2>&1 && [ -f "$DIR/config.yaml" ]; then
+    read -r HOST PORT < <(python3 - "$DIR/config.yaml" <<'PY'
+import sys, re
+path = sys.argv[1]
+text = open(path).read()
+m_host = re.search(r'^host:\s*"([^"]+)"', text, re.M)
+m_port = re.search(r'^port:\s*(\d+)', text, re.M)
+print((m_host.group(1) if m_host else "127.0.0.1"), (m_port.group(1) if m_port else "8844"))
+PY
+    )
+fi
+
 echo "========================================================"
-echo "  CyberPulse Status (Spotify Edition)"
+echo "  CyberPulse Status"
 echo "========================================================"
 
 RUNNING=0
+PID=""
 if [ -f "$PIDFILE" ]; then
-    PID=$(cat "$PIDFILE")
-    if ps -p "$PID" > /dev/null 2>&1; then
+    PID=$(cat "$PIDFILE" 2>/dev/null)
+    if [ -n "$PID" ] && ps -p "$PID" > /dev/null 2>&1; then
         RUNNING=1
-        echo "Status:          RUNNING (PID: $PID)"
-        echo "Dashboard:       http://127.0.0.1:$PORT"
-        echo "Memory RSS:      $(ps -o rss= -p "$PID" | awk '{print int($1/1024) " MB"}')"
-        echo "CPU Usage:       $(ps -o %cpu= -p "$PID")%"
     fi
 fi
 
 if [ "$RUNNING" -eq 0 ]; then
-    PIDS=$(pgrep -f "app.py --host 127.0.0.1 --port $PORT")
-    if [ -n "$PIDS" ]; then
-        echo "Status:          RUNNING (PID: $PIDS)"
-        echo "Dashboard:       http://127.0.0.1:$PORT"
+    FOUND=$(pgrep -f "app.py --host $HOST --port $PORT" 2>/dev/null | head -n1)
+    if [ -n "$FOUND" ]; then
+        PID="$FOUND"
         RUNNING=1
-    else
-        echo "Status:          STOPPED"
+        echo "$PID" > "$PIDFILE"
     fi
+fi
+
+if [ "$RUNNING" -eq 1 ]; then
+    echo "Status:          RUNNING (PID: $PID)"
+    echo "Dashboard:       http://$HOST:$PORT"
+    echo "Memory RSS:      $(ps -o rss= -p "$PID" 2>/dev/null | awk '{print int($1/1024) " MB"}')"
+    echo "CPU Usage:       $(ps -o %cpu= -p "$PID" 2>/dev/null)%"
+else
+    echo "Status:          STOPPED"
 fi
 
 if [ "$RUNNING" -eq 1 ]; then
     echo ""
     echo "Querying API Health..."
-    HEALTH=$(curl -s "http://127.0.0.1:$PORT/api/health" 2>/dev/null)
+    HEALTH=$(curl -s "http://$HOST:$PORT/api/health" 2>/dev/null)
     if [ -n "$HEALTH" ]; then
         echo "API Response:    $HEALTH"
     fi
-    STATS=$(curl -s "http://127.0.0.1:$PORT/api/stats" 2>/dev/null)
+    STATS=$(curl -s "http://$HOST:$PORT/api/stats" 2>/dev/null)
     if [ -n "$STATS" ]; then
         python3 -c "
 import json, sys

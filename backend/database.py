@@ -9,7 +9,13 @@ import json
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "cyberpulse.db")
+from .config import get
+
+DB_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    get("data_dir", default="data"),
+    "cyberpulse.db",
+)
 
 def get_connection() -> sqlite3.Connection:
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
@@ -99,6 +105,20 @@ def init_db():
         value TEXT NOT NULL
     )
     """)
+
+    # 6. Data retention policy
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS data_retention (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+    )
+    """)
+    retention_defaults = {
+        "usage_sessions_days": "0",
+        "scenario_history_days": "0",
+    }
+    for k, v in retention_defaults.items():
+        cursor.execute("INSERT OR IGNORE INTO data_retention (key, value) VALUES (?, ?)", (k, v))
     
     # Set default settings if not exist
     defaults = {
@@ -107,7 +127,9 @@ def init_db():
         "ai_provider": "hybrid",  # hybrid: offline expert engine + online fallback if connected
         "gemini_api_key": "",
         "openai_api_key": "",
-        "last_full_scan": ""
+        "last_full_scan": "",
+        "ai_enabled": "false",
+        "ai_redact_before_send": "true",
     }
     for k, v in defaults.items():
         cursor.execute("INSERT OR IGNORE INTO app_settings (key, value) VALUES (?, ?)", (k, v))
@@ -369,6 +391,63 @@ def set_setting(key: str, value: str):
     cursor.execute("INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)", (key, value))
     conn.commit()
     conn.close()
+
+
+def get_retention(key: str, default: str = "0") -> str:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT value FROM data_retention WHERE key = ?", (key,))
+    row = cursor.fetchone()
+    conn.close()
+    return row["value"] if row else default
+
+
+def set_retention(key: str, value: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("INSERT OR REPLACE INTO data_retention (key, value) VALUES (?, ?)", (key, value))
+    conn.commit()
+    conn.close()
+
+
+def cleanup_retention() -> Dict[str, int]:
+    """Delete usage_sessions and scenario_history rows older than retention days.
+    Returns counts of deleted rows per table. 0 days = keep forever."""
+    from datetime import datetime, timedelta
+    conn = get_connection()
+    cursor = conn.cursor()
+    deleted: Dict[str, int] = {}
+    now = datetime.utcnow()
+
+    usage_days = int(get_retention("usage_sessions_days", "0") or 0)
+    if usage_days > 0:
+        cutoff = (now - timedelta(days=usage_days)).isoformat()
+        cursor.execute("DELETE FROM usage_sessions WHERE start_time < ?", (cutoff,))
+        deleted["usage_sessions"] = cursor.rowcount
+
+    scenario_days = int(get_retention("scenario_history_days", "0") or 0)
+    if scenario_days > 0:
+        cutoff = (now - timedelta(days=scenario_days)).isoformat()
+        cursor.execute("DELETE FROM scenario_history WHERE created_at < ?", (cutoff,))
+        deleted["scenario_history"] = cursor.rowcount
+
+    conn.commit()
+    conn.close()
+    return deleted
+
+
+def wipe_all_data() -> Dict[str, int]:
+    """One-click wipe of all usage and scenario data (keeps tool catalogue)."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    counts: Dict[str, int] = {}
+    for table in ("usage_sessions", "tool_stats", "scenario_history"):
+        cursor.execute(f"SELECT COUNT(*) FROM {table}")
+        counts[table] = cursor.fetchone()[0]
+        cursor.execute(f"DELETE FROM {table}")
+    conn.commit()
+    conn.close()
+    return counts
 
 def save_scenario_query(query: str, category: str, tools: List[str], playbook: Dict[str, Any]):
     conn = get_connection()

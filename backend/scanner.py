@@ -23,6 +23,7 @@ from typing import Dict, Any, List, Set
 
 from .knowledge_base import CURATED_TOOLS
 from .database import upsert_tool, set_setting
+from .config import custom_paths
 
 # Augment process PATH to ensure all user runtime locations are searchable
 EXTRA_PATHS = [
@@ -579,14 +580,27 @@ def scan_all_tools() -> Dict[str, Any]:
             continue
 
     # ---------------------------------------------------------
-    # 9. Custom /opt and AppImage Installations
+    # 9. Custom /opt and AppImage Installations (configurable)
     # ---------------------------------------------------------
-    custom_opt = [
+    configured = custom_paths()
+    # Default well-known locations, overridden/extended by config.yaml custom_paths
+    default_custom = [
         {"name": "burpsuite_pro", "display_name": "Burp Suite Professional (/opt)", "path": "/opt/burpsuite_pro", "cat": "Web Applications", "src": "Custom /opt"},
-        {"name": "penligent", "display_name": "Penligent AI Pen-testing (/opt)", "path": "/opt/PenligentV3", "cat": "Exploitation Tools", "src": "Custom /opt"},
-        {"name": "packettracer", "display_name": "Cisco Packet Tracer", "path": "/opt/pt", "cat": "Reporting & Documentation", "src": "AppImage"}
+        {"name": "packettracer", "display_name": "Cisco Packet Tracer", "path": "/opt/pt", "cat": "Reporting & Documentation", "src": "AppImage"},
     ]
-    for c in custom_opt:
+    # config.yaml paths get a generic entry keyed by directory basename
+    for p in configured:
+        if p in [c["path"] for c in default_custom]:
+            continue
+        bname = os.path.basename(p.rstrip("/")) or "custom_tool"
+        default_custom.append({
+            "name": bname,
+            "display_name": f"{bname} (custom)",
+            "path": p,
+            "cat": "General Security",
+            "src": "Custom /opt",
+        })
+    for c in default_custom:
         if os.path.exists(c["path"]):
             cname = c["name"]
             discovered_tools[cname] = {
