@@ -1,0 +1,30 @@
+# --- CyberPulse runtime artifacts ---
+cyberpulse.log
+cyberpulse.pid
+*.pid
+*.log
+
+# --- Local data (SQLite databases and exports) ---
+data/*.db
+data/*.db-journal
+data/*.sqlite
+data/*.sqlite3
+data/exports/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+.env
+.venv/
+venv/
+
+# --- Local configuration (not shared; contains machine-specific paths) ---
+config.yaml
+config.local.yaml
+
+# --- OS ---
+.DS_Store
+Thumbs.db
