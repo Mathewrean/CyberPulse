@@ -3,6 +3,8 @@ CyberPulse FastAPI REST API
 Serves tools data, statistics, live process monitoring, and scenario advice.
 """
 
+import os
+import shutil
 import time
 from typing import Any
 
@@ -314,3 +316,76 @@ def export_data():
         content=export_payload,
         headers={"Content-Disposition": "attachment; filename=cyberpulse_export.json"}
     )
+
+
+# --- Health page ---
+class DependencyCheck(BaseModel):
+    name: str
+    available: bool
+    detail: str | None = None
+
+
+def _check_dependency(module_name: str, detail: str = "") -> DependencyCheck:
+    try:
+        __import__(module_name)
+        return DependencyCheck(name=module_name, available=True, detail=detail)
+    except Exception as exc:
+        return DependencyCheck(name=module_name, available=False, detail=str(exc))
+
+
+@app.get("/api/health/detailed")
+def health_detailed():
+    """Detailed health for the Health page: collectors, DB size, deps, self-test."""
+    cm = get_collector_manager()
+    deps = [
+        _check_dependency("fastapi", "web framework"),
+        _check_dependency("uvicorn", "ASGI server"),
+        _check_dependency("psutil", "process monitoring"),
+        _check_dependency("yaml", "config parsing"),
+    ]
+    missing = [d.name for d in deps if not d.available]
+
+    # Database size
+    db_size = 0
+    db_exists = os.path.exists(DB_PATH)
+    if db_exists:
+        try:
+            db_size = os.path.getsize(DB_PATH)
+        except OSError:
+            db_size = 0
+
+    # Self-test: can we read tools + settings?
+    self_test = {"db_readable": False, "settings_readable": False}
+    try:
+        get_all_tools()
+        self_test["db_readable"] = True
+    except Exception:
+        pass
+    try:
+        get_setting("theme", "dark")
+        self_test["settings_readable"] = True
+    except Exception:
+        pass
+
+    return {
+        "status": "healthy" if not missing and self_test["db_readable"] else "degraded",
+        "internet_connected": check_internet_connection(timeout=1.0),
+        "collectors": cm.get_status(),
+        "live_active": len(cm.get_live_status()),
+        "database": {
+            "path": DB_PATH,
+            "exists": db_exists,
+            "size_bytes": db_size,
+        },
+        "dependencies": [d.model_dump() for d in deps],
+        "missing_dependencies": missing,
+        "ai": {
+            "enabled": ai_enabled(),
+            "redact_before_send": ai_redact(),
+        },
+        "self_test": self_test,
+        "retention": {
+            "usage_sessions_days": int(get_retention("usage_sessions_days", "0") or 0),
+            "scenario_history_days": int(get_retention("scenario_history_days", "0") or 0),
+        },
+    }

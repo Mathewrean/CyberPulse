@@ -28,6 +28,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupSearchAndFilters();
   setupAdvisor();
   setupManual();
+  setupHealth();
   loadData();
   startLiveMonitor();
   setInterval(updateUptimeTimer, 1000);
