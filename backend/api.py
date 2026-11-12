@@ -20,6 +20,7 @@ from .database import (
 from .scanner import scan_all_tools
 from .monitor import get_monitor
 from .collectors import get_collector_manager, lab_start, lab_stop, lab_list, SHELL_LOG, WRAPPER_LOG
+from .manual import build_manual, explain_command, list_cached_manuals
 from .advisor import analyze_scenario, check_internet_connection
 from .config import ai_enabled, ai_redact, custom_paths
 
@@ -266,6 +267,23 @@ def lab_sessions_stop(session_id: str):
 @app.get("/api/lab/sessions")
 def lab_sessions_list(limit: int = 20):
     return {"sessions": lab_list(limit)}
+
+@app.get("/api/manual/{tool}")
+def manual_get(tool: str):
+    manual = build_manual(tool)
+    return manual
+
+class ExplainRequest(BaseModel):
+    command: str
+
+@app.post("/api/manual/explain")
+def manual_explain(payload: ExplainRequest):
+    command = _validate_text(payload.command, "command")
+    return explain_command(command)
+
+@app.get("/api/manual/list")
+def manual_list():
+    return {"manuals": list_cached_manuals()}
 
 
 @app.get("/api/export")
