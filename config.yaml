@@ -1,0 +1,45 @@
+# CyberPulse configuration
+# Copy this file to config.local.yaml for machine-specific overrides.
+# Values in config.local.yaml take precedence over config.yaml.
+
+version: 1
+
+# Web server
+host: "127.0.0.1"
+port: 8844
+
+# Database / data directory (relative to project root or absolute)
+data_dir: "data"
+
+# Custom tool installation paths (override machine-specific defaults here)
+# These supplement the standard scanner locations.
+custom_paths:
+  - "/opt/burpsuite_pro"
+  - "/opt/PenligentV3"
+  - "/opt/pt"
+
+# Online AI mode (privacy-sensitive)
+# OFF by default. Text pasted into the Incident Advisor leaves the machine
+# only when this is explicitly enabled AND a provider API key is configured.
+ai:
+  enabled: false
+  provider: "gemini"   # gemini | openai | none
+  gemini_api_key: ""
+  openai_api_key: ""
+  # When true, redact IPs, hostnames, usernames, hashes and emails before
+  # any text is sent to an online provider. Always preview before sending.
+  redact_before_send: true
+
+# Process monitor
+monitor:
+  interval_sec: 3
+  adaptive: true       # fast poll while a tool is running, slower when idle
+
+# Data retention (days). 0 = keep forever.
+retention:
+  usage_sessions_days: 0
+  scenario_history_days: 0
+
+# Shell hook (opt-in)
+shell_hook:
+  enabled: false

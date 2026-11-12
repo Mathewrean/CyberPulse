@@ -21,9 +21,9 @@ __pycache__/
 .venv/
 venv/
 
-# --- Local configuration (not shared; contains machine-specific paths) ---
-config.yaml
+# --- Local configuration (machine-specific override; not shared) ---
 config.local.yaml
+*.local.yaml
 
 # --- OS ---
 .DS_Store
