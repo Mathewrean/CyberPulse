@@ -127,3 +127,90 @@ This generates:
 - `~/Desktop/CyberPulse_Distribution.tar.gz`
 
 See [SHARE.md](file:///home/mathewrean/Desktop/CyberPulse/SHARE.md) for recipient setup instructions.
+
+---
+
+## ⚙️ Configuration
+
+CyberPulse is configured via `config.yaml` (shipped defaults). Create `config.local.yaml`
+for machine-specific overrides — it is **not** committed and takes precedence.
+
+Key settings:
+- `host` / `port`: bind address (default `127.0.0.1:8844`, local-only).
+- `custom_paths`: machine-specific install dirs (e.g. `/opt/PenligentV3`, `/opt/pt`).
+- `ai.enabled`: online AI mode — **off by default**, opt-in only.
+- `ai.redact_before_send`: redact IPs/hashes/emails/usernames/MACs before any text leaves the machine (default true).
+- `monitor.interval_sec`: psutil poll interval (default 3s); adaptive when a tool is running.
+- `retention.usage_sessions_days` / `scenario_history_days`: days to keep data (0 = forever).
+
+Example `config.local.yaml`:
+```yaml
+host: "127.0.0.1"
+port: 8844
+custom_paths:
+  - "/opt/PenligentV3"
+  - "/opt/pt"
+ai:
+  enabled: false
+  redact_before_send: true
+monitor:
+  interval_sec: 3
+retention:
+  usage_sessions_days: 90
+```
+
+---
+
+## 🖼️ Screenshots
+
+Screenshots of the Spotify-themed dashboard, tool checklist, live monitor, incident advisor,
+and manual tabs belong here. Capture them from `http://127.0.0.1:8844` after first run and
+place them in `docs/screenshots/`, then reference them:
+
+- `docs/screenshots/dashboard.png` — Home dashboard with mastery ring and today's activity.
+- `docs/screenshots/checklist.png` — Tool checklist with categories and filters.
+- `docs/screenshots/manual.png` — Tool Manual tab with examples and "Explain this command".
+- `docs/screenshots/advisor.png` — Incident Advisor playbook with tool readiness.
+
+---
+
+## 📊 Collector Comparison
+
+| Collector | Short-lived commands | Privilege | Opt-in | Notes |
+|-----------|---------------------|-----------|--------|-------|
+| psutil polling (baseline) | ❌ missed between samples | No | Yes (default) | Adaptive interval: fast while a tool runs, slower when idle |
+| Shell hook (bash/zsh/fish) | ✅ captured via preexec | No | Yes (rc snippet) | Logs cmd, args, cwd, exit code, duration |
+| Wrapper shims (`~/.cyberpulse/bin`) | ✅ captured at exec | No | Yes (PATH shim) | Wraps chosen tools, logs to `data/wrapper.log` |
+| auditd / eBPF execsnoop | ✅ kernel exec events | Yes (sudo) | Yes | Gracefully skipped if unavailable |
+| Desktop launcher (.desktop) | ℹ️ inventory only | No | Yes | Lists Kali menu launchers |
+| Manual lab session | ✅ user-declared | No | Yes | Start/Stop session with target, notes, tools |
+
+Events are de-duplicated across methods by `(tool, PID, start timestamp)`.
+
+---
+
+## ❓ FAQ
+
+**Q: Is online AI on by default?**
+A: No. `ai.enabled` is `false` by default. You must explicitly opt in, and text is redacted
+before it leaves the machine with a preview shown first.
+
+**Q: Does polling miss fast commands?**
+A: Yes. A quick `nmap`/`ffuf` can finish between 3s samples. Enable the shell hook or
+wrapper shims to catch short-lived commands.
+
+**Q: Where is data stored?**
+A: `data/cyberpulse.db` (SQLite) on your machine only. Nothing is sent remotely unless you
+enable online AI.
+
+**Q: Can I wipe my data?**
+A: Yes — `POST /api/data/wipe` is a one-click wipe of usage and scenario data (keeps the
+tool catalogue). Retention can auto-delete old rows via `/api/retention`.
+
+**Q: How do I add custom tool paths like /opt/PenligentV3?**
+A: Add them to `custom_paths` in `config.local.yaml` — no code changes needed.
+
+**Q: Does it run as root?**
+A: No. It binds to `127.0.0.1` and runs as your user. Kernel-level collection (auditd/eBPF)
+is optional and skipped if unavailable.
+
