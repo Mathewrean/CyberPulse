@@ -1,33 +1,18 @@
-# CyberPulse Security Suite (Spotify Edition)
+# CyberPulse Security Suite (Spotify Edition) v2.0.0
 
 > **A Comprehensive Cybersecurity Tool Checklist, Real-Time Process & Usage Monitor, and Incident & Scenario Advisor**  
 > Custom-engineered for Kali Linux and Debian systems with authentic Spotify Dark and Light design themes.
+
+**Status:** offline-first, local-only (127.0.0.1). Online AI is **opt-in and off by default**.
 
 ---
 
 ## 🌟 Key Features
 
-1. **System-Wide Deep Tool Detection & Checklist (260+ Tools)**
-   - Scans system binary `$PATH` (`/usr/bin`, `/usr/sbin`, `/usr/local/bin`, `~/.local/bin`, `/opt/*`).
-   - Parses Kali Linux Desktop applications (`/usr/share/applications/kali-*.desktop`).
-   - Rapidly queries the Debian/Kali `dpkg` database in batch.
-   - Detects custom security installations (e.g. `/opt/burpsuite_pro`, `/opt/PenligentV3`, `/opt/pt`).
-   - Categorizes tools across 15 standard domains:
-     - *Information Gathering*
-     - *Web Applications*
-     - *Active Directory & Post-Exploitation*
-     - *Password Attacks*
-     - *Wireless Attacks*
-     - *Forensics & Incident Response*
-     - *Reverse Engineering*
-     - *Sniffing & Spoofing*
-     - *Exploitation Tools*
-     - *Privilege Escalation*
-     - *Database Assessment*
-     - *Collection & Exfiltration*
-     - *Defense Evasion*
-     - *Reporting & Documentation*
-     - *General Security*
+1. **System-Wide Deep Tool Detection & Checklist**
+   - Scans system binary `$PATH`, Kali desktop applications, dpkg database, and custom security installations.
+   - Categorizes tools across 15 standard domains.
+   - **Tool count**: run `python3 app.py --scan` to print the exact number of discovered/installed tools backing the claim.
 
 2. **Rich Tool Details & Educational Knowledge Base**
    - **Usage Description**: Clear operational overview of what each tool does.
@@ -39,6 +24,10 @@
 
 3. **Background Process & Usage Time Monitor ("Always Running")**
    - Continuously monitors active running processes using lightweight background polling.
+   - **Accuracy note**: polling samples the process table every few seconds, so very
+     short-lived commands (a quick `nmap` or `ffuf` run) can finish between samples
+     and be missed. For complete capture, enable the optional shell hook (bash/zsh/fish)
+     or wrapper shims (see Configuration).
    - Detects tool executions (e.g., `nmap`, `burpsuite`, `hydra`, `wireshark`, `tcpdump`, `ffuf`, etc.).
    - Tracks:
      - **Execution Count**: Number of times each tool was launched.
@@ -51,16 +40,39 @@
      - e.g. *"Internal workstation sending repetitive Kerberos TGS requests and dumping SAM credentials over SMB."*
    - Returns:
      - **Detected Incident Domain & MITRE ATT&CK Mapping**.
-     - **Tool Readiness**: Highlights which recommended tools are **Installed & Ready** vs **Missing / Available to Install** (with exact `sudo apt install` commands).
+     - **Tool Readiness**: Highlights which recommended tools are **Installed & Ready** vs **Missing / Available to Install** (with exact `sudo apt install` commands shown for you to copy — commands are **never run automatically**).
      - **Phased Playbook**: Stage 1 (Triage & Recon), Stage 2 (Execution & Investigation), Stage 3 (Post-Analysis & Containment), and Remediation & Hardening.
      - **Executable Commands**: Copy-paste terminal snippets with placeholders (`<TARGET_IP>`, `<PCAP>`, etc.).
-   - **Dual Engine**: Works 100% offline via embedded threat engine, and automatically enhances recommendations with online AI when an internet connection is detected.
+    - **Dual Engine**: Works 100% offline via embedded threat engine. Online AI enhancement is **opt-in and off by default**; when enabled, scenario text is redacted (IPs, hashes, emails, usernames, MACs) before it leaves the machine, and a preview of exactly what will be sent is shown. No text is transmitted unless you explicitly turn AI on.
 
 5. **Spotify Aesthetic (Dark & Light Modes)**
    - Signature Spotify Green accents (`#1DB954` / `#1ED760`).
    - High-contrast Spotify Dark (`#121212` canvas, `#181818` cards).
    - Clean Spotify Light mode with soft shadows and sharp typography.
    - Bottom persistent "Now Playing" bar displaying active tool status and uptime.
+
+---
+
+## 🔒 Privacy & Threat Model
+
+**What is stored (locally, in `data/cyberpulse.db`, never leaves the machine):**
+- Detected security tools, install paths, versions, and your checklist status/notes.
+- Usage sessions: tool name, PID, command line, start/end time, duration, source collector.
+- Incident/scenario advisor history: the scenario text you paste, detected domain, and recommended tools.
+- App settings: theme and (optionally) an online AI API key — stored plaintext in SQLite; do not enter keys you cannot protect.
+
+**What leaves the machine:**
+- Nothing by default. Online AI is **off by default**.
+- Only if you explicitly enable AI mode AND have internet AND configure an API key: the (redacted) scenario text is sent to the provider (Gemini). IPs, CIDR ranges, MAC addresses, hashes, emails and obvious usernames are masked first, and a preview of exactly what will be sent is shown before any request.
+
+**What it needs:**
+- Binds to `127.0.0.1` only (not exposed to the network). No remote access by default.
+- Optional `sudo` only for kernel-level collection (auditd/eBPF) — gracefully skipped if unavailable.
+- Optional shell-hook/wrappers require editing your shell rc files and `PATH`.
+
+**Data retention:** usage sessions and scenario history are kept forever unless you set retention days (via `/api/retention`) or use the one-click wipe (`/api/data/wipe`).
+
+**Trust boundary:** treat CyberPulse as a local single-user tool. It has no authentication; do not expose it beyond `127.0.0.1`.
 
 ---
 
