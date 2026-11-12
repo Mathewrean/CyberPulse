@@ -20,7 +20,7 @@ if BASE_DIR not in sys.path:
 from backend.api import app
 from backend.database import init_db, get_all_tools
 from backend.scanner import scan_all_tools
-from backend.monitor import get_monitor
+from backend.collectors import get_collector_manager
 
 # Mount static files directory
 STATIC_DIR = os.path.join(BASE_DIR, "static")
@@ -44,16 +44,16 @@ def on_startup():
     else:
         print(f"[CyberPulse] Loaded {len(tools)} tools from database.")
         
-    # Start background process monitor
-    print("[CyberPulse] Launching background process usage monitor...")
-    monitor = get_monitor()
-    monitor.start()
-    print("[CyberPulse] Monitor thread active. Tracking process table.")
+    # Start layered background usage collectors (psutil polling + optional plugins)
+    print("[CyberPulse] Launching layered usage collectors...")
+    collectors = get_collector_manager()
+    collectors.start()
+    print("[CyberPulse] Collector manager active. Tracking process table.")
 
 @app.on_event("shutdown")
 def on_shutdown():
-    print("[CyberPulse] Shutting down monitor thread...")
-    get_monitor().stop()
+    print("[CyberPulse] Shutting down collector manager...")
+    get_collector_manager().stop()
 
 def main():
     parser = argparse.ArgumentParser(description="CyberPulse - Cybersecurity Tool Checklist & Activity Monitor")
