@@ -15,11 +15,13 @@ from .database import (
     get_all_tools, update_tool_status, get_statistics,
     get_setting, set_setting, get_scenario_history, DB_PATH,
     get_retention, set_retention, cleanup_retention, wipe_all_data,
+    start_lab_session, stop_lab_session, get_lab_sessions,
 )
 from .scanner import scan_all_tools
 from .monitor import get_monitor
+from .collectors import get_collector_manager, lab_start, lab_stop, lab_list, SHELL_LOG, WRAPPER_LOG
 from .advisor import analyze_scenario, check_internet_connection
-from .config import ai_enabled, ai_redact
+from .config import ai_enabled, ai_redact, custom_paths
 
 app = FastAPI(title="CyberPulse API", version="2.0.0")
 
@@ -136,15 +138,44 @@ def trigger_scan():
 @app.get("/api/stats")
 def stats():
     st = get_statistics()
-    live = get_monitor().get_live_status()
+    live = get_collector_manager().get_live_status()
     st["live_active"] = live
+    st["collectors"] = get_collector_manager().get_status()
     st["internet_connected"] = check_internet_connection(timeout=1.0)
     return st
 
 @app.get("/api/monitor/live")
 def monitor_live():
-    live = get_monitor().get_live_status()
+    live = get_collector_manager().get_live_status()
     return {"active_count": len(live), "processes": live}
+
+@app.get("/api/monitor/collectors")
+def collectors_list():
+    return {"collectors": get_collector_manager().get_status()}
+
+@app.post("/api/monitor/collectors/{name}")
+def collectors_set(name: str, payload: Dict[str, Any] = None):
+    enabled = bool((payload or {}).get("enabled", False))
+    ok = get_collector_manager().set_enabled(name, enabled)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Collector not found")
+    return {"status": "success", "collector": name, "enabled": enabled}
+
+@app.get("/api/collectors/shell-hook")
+def shell_hook_snippet():
+    cm = get_collector_manager()
+    for p in cm.plugins:
+        if p.name == "shell_hook":
+            return {"bash": p.rc_snippet(), "fish": p.fish_snippet(), "log": SHELL_LOG}
+    raise HTTPException(status_code=404, detail="shell_hook collector not found")
+
+@app.get("/api/collectors/wrapper")
+def wrapper_snippet():
+    cm = get_collector_manager()
+    for p in cm.plugins:
+        if p.name == "wrapper":
+            return {"snippet": p.setup_snippet(), "bin_dir": p.bin_dir, "log": WRAPPER_LOG}
+    raise HTTPException(status_code=404, detail="wrapper collector not found")
 
 @app.post("/api/advisor/analyze")
 def advisor_analyze(payload: ScenarioRequest):
@@ -213,6 +244,30 @@ def wipe_data():
     counts = wipe_all_data()
     return {"status": "success", "wiped": counts}
 
+
+# --- Manual lab session endpoints ---
+class LabSessionRequest(BaseModel):
+    session_id: str
+    name: Optional[str] = ""
+    target: Optional[str] = ""
+    notes: Optional[str] = ""
+    tools: Optional[List[str]] = []
+
+@app.post("/api/lab/sessions")
+def lab_sessions_start(payload: LabSessionRequest):
+    lab_start(payload.session_id, payload.name, payload.target, payload.notes, payload.tools)
+    return {"status": "success", "session_id": payload.session_id}
+
+@app.post("/api/lab/sessions/{session_id}/stop")
+def lab_sessions_stop(session_id: str):
+    lab_stop(session_id)
+    return {"status": "success", "session_id": session_id}
+
+@app.get("/api/lab/sessions")
+def lab_sessions_list(limit: int = 20):
+    return {"sessions": lab_list(limit)}
+
+
 @app.get("/api/export")
 def export_data():
     tools = get_all_tools()
@@ -221,9 +276,11 @@ def export_data():
         "export_timestamp": time.time(),
         "total_tools": len(tools),
         "statistics": stats_data,
-        "tools": tools
+        "tools": tools,
+        "usage_sessions": stats_data.get("recent_sessions", []),
+        "lab_sessions": lab_list(50),
     }
     return JSONResponse(
         content=export_payload,
-        headers={"Content-Disposition": "attachment; filename=cyberpulse_checklist_export.json"}
+        headers={"Content-Disposition": "attachment; filename=cyberpulse_export.json"}
     )

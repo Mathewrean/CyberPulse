@@ -79,10 +79,55 @@ def init_db():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         tool_name TEXT NOT NULL,
         pid INTEGER NOT NULL,
+        session_id TEXT DEFAULT '',
         start_time TEXT NOT NULL,
         end_time TEXT DEFAULT '',
         duration_seconds REAL DEFAULT 0.0,
-        cmdline TEXT DEFAULT ''
+        cmdline TEXT DEFAULT '',
+        args_hash TEXT DEFAULT '',
+        source_method TEXT DEFAULT 'polling',
+        exit_code INTEGER DEFAULT 0,
+        cpu_peak REAL DEFAULT 0.0,
+        mem_peak REAL DEFAULT 0.0
+    )
+    """)
+
+    # Safe migrations for pre-existing databases
+    cursor.execute("PRAGMA table_info(usage_sessions)")
+    _cols = {r["name"] for r in cursor.fetchall()}
+    for _col, _def in [
+        ("session_id", "TEXT DEFAULT ''"),
+        ("args_hash", "TEXT DEFAULT ''"),
+        ("source_method", "TEXT DEFAULT 'polling'"),
+        ("exit_code", "INTEGER DEFAULT 0"),
+        ("cpu_peak", "REAL DEFAULT 0.0"),
+        ("mem_peak", "REAL DEFAULT 0.0"),
+    ]:
+        if _col not in _cols:
+            cursor.execute(f"ALTER TABLE usage_sessions ADD COLUMN {_col} {_def}")
+
+    # Index for dedup / lookups
+    cursor.execute("""
+    CREATE INDEX IF NOT EXISTS idx_usage_sessions_tool_time
+    ON usage_sessions(tool_name, start_time)
+    """)
+    cursor.execute("""
+    CREATE INDEX IF NOT EXISTS idx_usage_sessions_pid
+    ON usage_sessions(pid)
+    """)
+
+    # 4. Manual lab sessions (Start/Stop lab session)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS lab_sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id TEXT UNIQUE NOT NULL,
+        name TEXT DEFAULT '',
+        target TEXT DEFAULT '',
+        notes TEXT DEFAULT '',
+        tools TEXT DEFAULT '[]',
+        start_time TEXT NOT NULL,
+        end_time TEXT DEFAULT '',
+        status TEXT DEFAULT 'active'
     )
     """)
     
@@ -248,11 +293,13 @@ def update_tool_status(tool_name: str, status: Optional[str] = None, is_favorite
         conn.commit()
     conn.close()
 
-def record_process_start(tool_name: str, pid: int, cmdline: str):
+def record_process_start(tool_name: str, pid: int, cmdline: str,
+                         session_id: str = "", source_method: str = "polling",
+                         args_hash: str = ""):
     conn = get_connection()
     cursor = conn.cursor()
     now_iso = datetime.now().isoformat()
-    
+
     # 1. Update or create tool_stats
     cursor.execute("""
     INSERT INTO tool_stats (tool_name, total_runs, total_seconds, last_run, currently_running, current_pid, current_started_at)
@@ -264,40 +311,71 @@ def record_process_start(tool_name: str, pid: int, cmdline: str):
         current_pid = excluded.current_pid,
         current_started_at = excluded.current_started_at
     """, (tool_name, now_iso, pid, now_iso))
-    
+
     # 2. Insert into usage_sessions
     cursor.execute("""
-    INSERT INTO usage_sessions (tool_name, pid, start_time, cmdline)
-    VALUES (?, ?, ?, ?)
-    """, (tool_name, pid, now_iso, cmdline))
-    
+    INSERT INTO usage_sessions (tool_name, pid, session_id, start_time, cmdline, args_hash, source_method)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (tool_name, pid, session_id, now_iso, cmdline, args_hash, source_method))
+
     conn.commit()
     conn.close()
 
-def record_process_stop(tool_name: str, pid: int, duration_sec: float):
+def record_process_stop(tool_name: str, pid: int, duration_sec: float,
+                        exit_code: int = 0, cpu_peak: float = 0.0, mem_peak: float = 0.0):
     conn = get_connection()
     cursor = conn.cursor()
     now_iso = datetime.now().isoformat()
-    
+
     # Update tool_stats
     cursor.execute("""
-    UPDATE tool_stats 
+    UPDATE tool_stats
     SET total_seconds = total_seconds + ?,
         currently_running = 0,
         current_pid = 0,
         current_started_at = ''
     WHERE tool_name = ?
     """, (duration_sec, tool_name))
-    
+
     # Update latest open session for this pid/tool
     cursor.execute("""
     UPDATE usage_sessions
-    SET end_time = ?, duration_seconds = ?
+    SET end_time = ?, duration_seconds = ?, exit_code = ?, cpu_peak = ?, mem_peak = ?
     WHERE tool_name = ? AND pid = ? AND end_time = ''
-    """, (now_iso, duration_sec, tool_name, pid))
-    
+    """, (now_iso, duration_sec, exit_code, cpu_peak, mem_peak, tool_name, pid))
+
     conn.commit()
     conn.close()
+
+
+def record_usage_event(tool_name: str, pid: int, start_time: str, end_time: str,
+                       duration_seconds: float, cmdline: str, args_hash: str,
+                       source_method: str, exit_code: int = 0,
+                       cpu_peak: float = 0.0, mem_peak: float = 0.0,
+                       session_id: str = "") -> int:
+    """Insert a complete usage event from any collector plugin. Returns row id."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+    INSERT INTO usage_sessions
+        (tool_name, pid, session_id, start_time, end_time, duration_seconds,
+         cmdline, args_hash, source_method, exit_code, cpu_peak, mem_peak)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (tool_name, pid, session_id, start_time, end_time, duration_seconds,
+          cmdline, args_hash, source_method, exit_code, cpu_peak, mem_peak))
+    # Update tool_stats aggregates
+    cursor.execute("""
+    INSERT INTO tool_stats (tool_name, total_runs, total_seconds, last_run, currently_running, current_pid, current_started_at)
+    VALUES (?, 1, ?, ?, 0, 0, '')
+    ON CONFLICT(tool_name) DO UPDATE SET
+        total_runs = total_runs + 1,
+        total_seconds = total_seconds + excluded.total_seconds,
+        last_run = excluded.last_run
+    """, (tool_name, duration_seconds, end_time))
+    row_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    return row_id
 
 def get_statistics():
     conn = get_connection()
@@ -469,6 +547,40 @@ def get_scenario_history(limit: int = 10) -> List[Dict[str, Any]]:
         d = dict(r)
         d["recommended_tools"] = json.loads(d.get("recommended_tools") or "[]")
         d["playbook"] = json.loads(d.get("playbook") or "{}")
+        res.append(d)
+    conn.close()
+    return res
+
+
+# --- Manual lab session helpers ---
+def start_lab_session(session_id: str, name: str = "", target: str = "", notes: str = "", tools: List[str] = None) -> None:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+    INSERT OR REPLACE INTO lab_sessions (session_id, name, target, notes, tools, start_time, status)
+    VALUES (?, ?, ?, ?, ?, ?, 'active')
+    """, (session_id, name, target, notes, json.dumps(tools or []), datetime.now().isoformat()))
+    conn.commit()
+    conn.close()
+
+def stop_lab_session(session_id: str) -> None:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+    UPDATE lab_sessions SET end_time = ?, status = 'completed' WHERE session_id = ? AND status = 'active'
+    """, (datetime.now().isoformat(), session_id))
+    conn.commit()
+    conn.close()
+
+def get_lab_sessions(limit: int = 20) -> List[Dict[str, Any]]:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM lab_sessions ORDER BY start_time DESC LIMIT ?", (limit,))
+    rows = cursor.fetchall()
+    res = []
+    for r in rows:
+        d = dict(r)
+        d["tools"] = json.loads(d.get("tools") or "[]")
         res.append(d)
     conn.close()
     return res
