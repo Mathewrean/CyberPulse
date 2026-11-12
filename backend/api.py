@@ -25,10 +25,13 @@ from .config import ai_enabled, ai_redact
 from .database import (
     cleanup_retention,
     get_all_tools,
+    get_mastery_progress,
+    get_next_recommended_tool,
     get_retention,
     get_scenario_history,
     get_setting,
     get_statistics,
+    get_streak,
     get_usage_timeline,
     set_retention,
     set_setting,
@@ -160,6 +163,14 @@ def stats():
     st["collectors"] = get_collector_manager().get_status()
     st["internet_connected"] = check_internet_connection(timeout=1.0)
     return st
+
+@app.get("/api/dashboard/summary")
+def dashboard_summary():
+    return {
+        "streak": get_streak(),
+        "mastery": get_mastery_progress(),
+        "next_tool": get_next_recommended_tool(),
+    }
 
 @app.get("/api/monitor/live")
 def monitor_live():

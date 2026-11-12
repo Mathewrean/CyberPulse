@@ -306,18 +306,53 @@ function renderDashboard(stats) {
   document.getElementById("stat-runtime").textContent = `${totalHours}h`;
   document.getElementById("stat-runs").textContent = `${stats.total_executions} executions tracked`;
 
-  // Mastery percentage
-  const masteredCount = (stats.status_counts && stats.status_counts.mastered) || 0;
-  const learningCount = (stats.status_counts && stats.status_counts.learning) || 0;
-  const masteryPct = stats.total_tools > 0 ? Math.round((masteredCount / stats.total_tools) * 100) : 0;
-  document.getElementById("stat-mastery").textContent = `${masteryPct}%`;
-  document.getElementById("stat-mastery-sub").textContent = `${masteredCount} mastered • ${learningCount} learning`;
-
   // Nav badges
   document.getElementById("nav-tool-count").textContent = stats.total_tools;
 
   // Dynamically populate category filter pills
   renderCategoryPills(stats.categories || [], stats.total_tools);
+
+  // Dashboard summary: streak, weighted mastery, next recommended tool
+  fetch("/api/dashboard/summary")
+    .then(r => r.json())
+    .then(summary => {
+      // Streak
+      const streakEl = document.getElementById("stat-streak");
+      if (streakEl) streakEl.textContent = summary.streak || 0;
+
+      // Weighted mastery ring
+      const mastery = summary.mastery || {};
+      const masteryPct = mastery.mastery_percent || 0;
+      const masteryEl = document.getElementById("stat-mastery");
+      if (masteryEl) masteryEl.textContent = `${masteryPct}%`;
+      const subEl = document.getElementById("stat-mastery-sub");
+      if (subEl) subEl.textContent = `${mastery.mastered || 0} mastered • ${(mastery.status_counts && mastery.status_counts.learning) || 0} learning`;
+      const ring = document.getElementById("ring-mastery");
+      const ringText = document.getElementById("ring-mastery-text");
+      if (ring && ringText) {
+        const circumference = 2 * Math.PI * 24;
+        ring.style.strokeDasharray = circumference;
+        ring.style.strokeDashoffset = circumference - (circumference * masteryPct) / 100;
+        ringText.textContent = `${masteryPct}%`;
+      }
+
+      // Next recommended tool
+      const nextTool = summary.next_tool;
+      const nextEl = document.getElementById("stat-next-tool");
+      const nextSub = document.getElementById("stat-next-tool-sub");
+      if (nextEl) {
+        nextEl.textContent = nextTool ? nextTool.display_name : "—";
+        nextEl.title = nextTool ? nextTool.display_name : "";
+      }
+      if (nextSub && nextTool) {
+        nextSub.textContent = `${nextTool.category} • ${nextTool.checklist_status}`;
+      }
+    })
+    .catch(() => {
+      document.getElementById("stat-streak").textContent = "0";
+      document.getElementById("stat-mastery").textContent = "0%";
+      document.getElementById("stat-next-tool").textContent = "—";
+    });
 
   // Categories Breakdown Grid
   const catGrid = document.getElementById("category-cards-grid");

@@ -607,3 +607,84 @@ def get_usage_timeline(limit: int = 100) -> list[dict[str, Any]]:
         res.append(d)
     conn.close()
     return res
+
+
+# --- Dashboard enhancements ---
+
+STATUS_WEIGHT = {"not_started": 0.0, "learning": 0.25, "practicing": 0.5, "mastered": 1.0}
+STATUS_ORDER = {"not_started": 0, "learning": 1, "practicing": 2, "mastered": 3}
+
+
+def get_streak() -> int:
+    """Consecutive days (ending today) with at least one usage session."""
+    from datetime import date, timedelta
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+    SELECT DISTINCT substr(start_time, 1, 10) as day
+    FROM usage_sessions
+    ORDER BY day DESC
+    """)
+    days = [r[0] for r in cursor.fetchall()]
+    conn.close()
+    if not days:
+        return 0
+    streak = 0
+    today = date.today().isoformat()
+    # If the most recent day isn't today or yesterday, streak is broken (unless today has activity)
+    cursor_day = date.fromisoformat(days[0]) if days[0] <= today else date.today()
+    target = date.today()
+    day_set = set(days)
+    while target.isoformat() in day_set:
+        streak += 1
+        target = target - timedelta(days=1)
+    return streak
+
+
+def get_mastery_progress() -> dict[str, Any]:
+    """Weighted mastery percentage across installed tools."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT name, checklist_status, installed FROM tools WHERE installed = 1")
+    rows = cursor.fetchall()
+    conn.close()
+    total = len(rows)
+    if total == 0:
+        return {"mastery_percent": 0, "total_installed": 0, "mastered": 0, "status_counts": {}}
+    score = sum(STATUS_WEIGHT.get((r["checklist_status"] or "not_started"), 0.0) for r in rows)
+    mastered = sum(1 for r in rows if (r["checklist_status"] or "") == "mastered")
+    status_counts: dict[str, int] = {}
+    for r in rows:
+        st = r["checklist_status"] or "not_started"
+        status_counts[st] = status_counts.get(st, 0) + 1
+    return {
+        "mastery_percent": round((score / total) * 100, 1),
+        "total_installed": total,
+        "mastered": mastered,
+        "status_counts": status_counts,
+    }
+
+
+def get_next_recommended_tool() -> dict[str, Any] | None:
+    """Next tool to learn: installed, not mastered, lowest mastery status first."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+    SELECT name, display_name, category, checklist_status, binary_path
+    FROM tools
+    WHERE installed = 1 AND (checklist_status IS NULL OR checklist_status != 'mastered')
+    ORDER BY
+        CASE checklist_status
+            WHEN 'not_started' THEN 0
+            WHEN 'learning' THEN 1
+            WHEN 'practicing' THEN 2
+            ELSE 3
+        END,
+        name ASC
+    LIMIT 1
+    """)
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        return None
+    return dict(row)
