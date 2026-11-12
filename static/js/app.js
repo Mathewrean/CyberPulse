@@ -31,6 +31,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupHealth();
   setupTimeline();
   setupPalette();
+  setupWorkflows();
   loadData();
   startLiveMonitor();
   setInterval(updateUptimeTimer, 1000);
@@ -1428,6 +1429,269 @@ function setupPalette() {
     const items = results.querySelectorAll(".palette-item");
     items.forEach((el, i) => {
       el.style.background = i === activeIndex ? "var(--bg-card-hover)" : "";
+    });
+  }
+}
+
+// 9e. Guided Workflows
+function setupWorkflows() {
+  const grid = document.getElementById("workflows-grid");
+  const panel = document.getElementById("workflow-panel");
+  const modeTitle = document.getElementById("workflow-mode-title");
+  const modeSub = document.getElementById("workflow-mode-sub");
+  const modeContent = document.getElementById("workflow-mode-content");
+  const backBtn = document.getElementById("workflow-back");
+  const actionBtn = document.getElementById("workflow-action");
+  let currentMode = null;
+  let currentTool = null;
+
+  const modes = [
+    { id: "learn", title: "Learn", sub: "Read a tool manual, try an example, mark progress", icon: "L" },
+    { id: "practice", title: "Practice", sub: "Run a lab session, log findings, track time", icon: "P" },
+    { id: "investigate", title: "Investigate", sub: "Paste an incident, get a playbook, tick steps off", icon: "I" },
+    { id: "report", title: "Report", sub: "Turn a session into a Markdown lab report", icon: "R" },
+  ];
+
+  if (grid) {
+    grid.innerHTML = modes.map(m => `
+      <div class="metric-card" style="cursor:pointer;" data-mode="${m.id}">
+        <div class="metric-header">
+          <span class="metric-title">${m.title}</span>
+          <div class="metric-icon">${m.icon}</div>
+        </div>
+        <div class="metric-value" style="font-size:13px;color:var(--text-secondary);">${m.sub}</div>
+        <div class="metric-footer" style="color:var(--spotify-green);font-size:12px;">Start &rarr;</div>
+      </div>
+    `).join("");
+    grid.querySelectorAll(".metric-card").forEach(card => {
+      card.addEventListener("click", () => {
+        currentMode = card.getAttribute("data-mode");
+        showPanel(currentMode);
+      });
+    });
+  }
+
+  function showPanel(mode) {
+    currentMode = mode;
+    const m = modes.find(x => x.id === mode);
+    grid.style.display = "none";
+    panel.style.display = "";
+    modeTitle.textContent = m.title;
+    modeSub.textContent = m.sub;
+    modeContent.innerHTML = "";
+    if (mode === "learn") renderLearn();
+    else if (mode === "practice") renderPractice();
+    else if (mode === "investigate") renderInvestigate();
+    else if (mode === "report") renderReport();
+    actionBtn.style.display = "none";
+  }
+
+  if (backBtn) backBtn.addEventListener("click", () => {
+    panel.style.display = "none";
+    grid.style.display = "";
+    currentMode = null;
+    currentTool = null;
+  });
+
+  async function renderLearn() {
+    try {
+      const res = await fetch("/api/tools?installed=1&limit=40");
+      const data = await res.json();
+      const tools = data.tools || [];
+      let html = `<div style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">Pick an installed tool, open its manual, and mark your mastery progress.</div>`;
+      html += `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">`;
+      tools.slice(0, 24).forEach(t => {
+        html += `<button class="pill-btn learn-tool" data-tool="${escapeHtml(t.name)}">${escapeHtml(t.display_name || t.name)}</button>`;
+      });
+      html += `</div>`;
+      html += `<div id="learn-detail" style="margin-top:12px;"></div>`;
+      modeContent.innerHTML = html;
+      actionBtn.style.display = "none";
+      modeContent.querySelectorAll(".learn-tool").forEach(btn => {
+        btn.addEventListener("click", () => {
+          currentTool = btn.getAttribute("data-tool");
+          actionBtn.style.display = "inline-block";
+          actionBtn.textContent = "View Manual";
+          actionBtn.onclick = () => {
+            const mInput = document.getElementById("manual-search");
+            if (mInput) mInput.value = currentTool;
+            switchTab("manual");
+            const b = document.getElementById("btn-load-manual");
+            if (b) b.click();
+            backBtn.click();
+          };
+          const detail = document.getElementById("learn-detail");
+          detail.innerHTML = `<div style="margin-top:10px;padding:10px;background:var(--bg-card);border-radius:var(--radius-sm);">
+            <div style="font-weight:700;">${escapeHtml(currentTool)}</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Open the Manual tab to view the full local manual and worked examples.</div>
+            <div style="margin-top:8px;">
+              <button class="pill-btn" onclick="setLearnStatus('not_started')">Not Started</button>
+              <button class="pill-btn" onclick="setLearnStatus('learning')">Learning</button>
+              <button class="pill-btn" onclick="setLearnStatus('practicing')">Practicing</button>
+              <button class="pill-btn" onclick="setLearnStatus('mastered')">Mastered</button>
+            </div>
+            <div id="learn-status-msg" style="font-size:12px;color:var(--spotify-green);margin-top:6px;"></div>
+          </div>`;
+        });
+      });
+    } catch (e) {
+      modeContent.innerHTML = "<p style='color:var(--text-muted);'>Unable to load tools.</p>";
+    }
+  }
+
+  window.setLearnStatus = async (status) => {
+    if (!currentTool) return;
+    try {
+      await fetch(`/api/tools/${encodeURIComponent(currentTool)}/status`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({checklist_status: status}),
+      });
+      const msg = document.getElementById("learn-status-msg");
+      if (msg) msg.textContent = `Marked ${currentTool} as ${status}.`;
+      setTimeout(() => { if (msg) msg.textContent = ""; }, 2000);
+    } catch (e) {
+      alert("Failed to update status.");
+    }
+  };
+
+  function renderPractice() {
+    modeContent.innerHTML = `
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">Start a lab session to log target, notes, and tools used.</div>
+      <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+        <input id="practice-name" class="search-input" placeholder="Session name" style="flex:1;min-width:140px;">
+        <input id="practice-target" class="search-input" placeholder="Target (e.g. 10.0.0.0/24)" style="flex:1;min-width:140px;">
+        <input id="practice-notes" class="search-input" placeholder="Notes" style="flex:1;min-width:140px;">
+        <input id="practice-tools" class="search-input" placeholder="Tools (comma-separated)" style="flex:1;min-width:140px;">
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" id="practice-start">Start Session</button>
+        <button class="btn btn-secondary" id="practice-stop">Stop Session</button>
+      </div>
+      <div id="practice-msg" style="font-size:12px;color:var(--spotify-green);margin-top:8px;"></div>
+      <div id="practice-list" style="margin-top:14px;font-size:13px;"></div>
+    `;
+    actionBtn.style.display = "none";
+    document.getElementById("practice-start").addEventListener("click", async () => {
+      const sid = "lab-" + Date.now();
+      const name = document.getElementById("practice-name").value || sid;
+      const target = document.getElementById("practice-target").value || "";
+      const notes = document.getElementById("practice-notes").value || "";
+      const tools = document.getElementById("practice-tools").value.split(",").map(s=>s.trim()).filter(Boolean);
+      try {
+        await fetch("/api/lab/sessions", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({session_id:sid,name,target,notes,tools})});
+        document.getElementById("practice-msg").textContent = `Started session "${name}".`;
+        loadPracticeList();
+      } catch(e){ alert("Failed to start session."); }
+    });
+    document.getElementById("practice-stop").addEventListener("click", async () => {
+      try {
+        const res = await fetch("/api/lab/sessions");
+        const data = await res.json();
+        const active = (data.sessions||[]).find(s=>s.status==="active");
+        if (active) {
+          await fetch(`/api/lab/sessions/${active.session_id}/stop`, {method:"POST"});
+          document.getElementById("practice-msg").textContent = `Stopped session "${active.name}".`;
+          loadPracticeList();
+        } else {
+          document.getElementById("practice-msg").textContent = "No active session.";
+        }
+      } catch(e){ alert("Failed to stop session."); }
+    });
+    loadPracticeList();
+  }
+
+  async function loadPracticeList() {
+    try {
+      const res = await fetch("/api/lab/sessions?limit=10");
+      const data = await res.json();
+      const el = document.getElementById("practice-list");
+      if (!el) return;
+      if (!(data.sessions||[]).length) { el.innerHTML = "<p style='color:var(--text-muted);'>No lab sessions yet.</p>"; return; }
+      el.innerHTML = (data.sessions||[]).map(s => `
+        <div style="padding:6px 8px;border-bottom:1px solid var(--border-subtle);font-size:12px;display:flex;justify-content:space-between;">
+          <div><strong>${escapeHtml(s.name||'')}</strong> <span style="color:var(--text-muted);">${s.status}</span></div>
+          <div style="color:var(--spotify-green-dim);">${s.target||'-'}</div>
+        </div>
+      `).join("");
+    } catch(e){}
+  }
+
+  function renderInvestigate() {
+    modeContent.innerHTML = `
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">Paste an incident to get a phased playbook, then save it as a session.</div>
+      <textarea id="investigate-input" class="scenario-textarea" placeholder="Paste an incident alert or objective..." style="width:100%;min-height:110px;margin-bottom:10px;"></textarea>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" id="investigate-analyze">Analyze</button>
+        <button class="btn btn-secondary" id="investigate-save" style="display:none;">Save as Session</button>
+      </div>
+      <div id="investigate-output" style="margin-top:14px;"></div>
+    `;
+    actionBtn.style.display = "none";
+    document.getElementById("investigate-analyze").addEventListener("click", async () => {
+      const text = document.getElementById("investigate-input").value.trim();
+      if (!text) { alert("Enter a scenario."); return; }
+      try {
+        const res = await fetch("/api/advisor/analyze", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({scenario:text, force_offline:true})});
+        const d = await res.json();
+        let html = `<div style="font-weight:700;margin-bottom:6px;">${escapeHtml(d.detected_domain||'')}</div>`;
+        html += `<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">${escapeHtml(d.summary||'')}</div>`;
+        html += `<div style="font-weight:700;margin-bottom:4px;">Playbook</div>`;
+        const pb = d.playbook||{};
+        html += `<div style="margin-bottom:4px;"><strong>1. Triage:</strong> ${escapeHtml(pb.stage_1_recon||'')}</div>`;
+        html += `<div style="margin-bottom:4px;"><strong>2. Execute:</strong> ${escapeHtml(pb.stage_2_execution||'')}</div>`;
+        html += `<div style="margin-bottom:8px;"><strong>3. Post:</strong> ${escapeHtml(pb.stage_3_post_exploit||'')}</div>`;
+        html += `<div style="font-weight:700;margin-bottom:4px;">Remediation</div>`;
+        html += `<div style="font-size:13px;color:var(--text-primary);">${escapeHtml(pb.remediation||'')}</div>`;
+        document.getElementById("investigate-output").innerHTML = html;
+        document.getElementById("investigate-save").style.display = "inline-block";
+        document.getElementById("investigate-save").onclick = async () => {
+          const sid = "inv-" + Date.now();
+          await fetch("/api/lab/sessions", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({session_id:sid,name:"Investigation",target:text.slice(0,80),notes:text,tools:(d.recommended_tools||[]).map(t=>t.name)})});
+          document.getElementById("investigate-save").textContent = "Saved as session.";
+        };
+      } catch(e){ alert("Analysis failed."); }
+    });
+  }
+
+  function renderReport() {
+    modeContent.innerHTML = `
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">Export session events as a Markdown lab report (objective, method, evidence, findings, remediation).</div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" id="report-export">Export Lab Report (.md)</button>
+      </div>
+      <div id="report-msg" style="font-size:12px;color:var(--spotify-green);margin-top:8px;"></div>
+    `;
+    actionBtn.style.display = "none";
+    document.getElementById("report-export").addEventListener("click", () => {
+      const btn = document.getElementById("report-export");
+      btn.textContent = "Exporting...";
+      fetch("/api/sessions/timeline?limit=1000")
+        .then(r=>r.json())
+        .then(data=>{
+          const sessions = data.sessions||[];
+          let md = "# CyberPulse Lab Report\n\n";
+          md += `Generated: ${new Date().toISOString()}\n\n`;
+          md += `## Session Events (${sessions.length})\n\n`;
+          sessions.forEach((s,i)=>{
+            md += `### ${i+1}. ${s.tool_name||'unknown'}\n`;
+            md += `- **PID:** ${s.pid}  \n`;
+            md += `- **Source:** ${s.source_method||'-'}  \n`;
+            md += `- **Start:** ${s.start_time||'-'}  \n`;
+            md += `- **End:** ${s.end_time||'-'}  \n`;
+            md += `- **Duration:** ${(s.duration_seconds||0).toFixed(1)}s  \n`;
+            md += `- **Exit Code:** ${s.exit_code??'-'}  \n`;
+            md += `- **Command:** \`${(s.cmdline||'').replace(/`/g,'\\`')}\`  \n\n`;
+          });
+          const blob=new Blob([md],{type:"text/markdown"});
+          const url=URL.createObjectURL(blob);
+          const a=document.createElement("a");
+          a.href=url; a.download=`cyberpulse_lab_report_${new Date().toISOString().slice(0,10)}.md`;
+          a.click(); URL.revokeObjectURL(url);
+          document.getElementById("report-msg").textContent = "Report exported.";
+          btn.textContent = "Export Lab Report (.md)";
+        })
+        .catch(()=>{ btn.textContent = "Export Lab Report (.md)"; alert("Export failed."); });
     });
   }
 }
